@@ -1,4 +1,25 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(echo \"tsc exit: $?\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"eslint exit: $?\")",
+      "Bash(xcrun simctl *)",
+      "Bash(curl -s -m 4 http://localhost:8081/status)",
+      "Bash(adb -s emulator-5554 shell dumpsys activity activities)",
+      "Bash(adb -s emulator-5554 shell pm list packages)",
+      "Bash(adb -s emulator-5554 reverse tcp:8081 tcp:8081)",
+      "Bash(nohup npx expo start --dev-client --port 8081)",
+      "Bash(echo \"metro pid: $!\")",
+      "Bash(pnpm android *)",
+      "Read(//opt/homebrew/Caskroom/android-platform-tools/36.0.0/platform-tools/**)",
+      "Bash(npx expo *)",
+      "Bash(git rm *)",
+      "Bash(pnpm lint *)",
+      "Bash(grep -oE \"\\\\`/[a-z-]*\\\\`|StaticRoutes = [^;]*\" .expo/types/router.d.ts)"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   }
