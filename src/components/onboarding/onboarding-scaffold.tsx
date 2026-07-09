@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -97,20 +97,30 @@ export function OnboardingScaffold({
   );
 }
 
+// The bar remounts with every step screen, so the previous step's fill is
+// carried at module level — that's what lets each screen's bar animate from
+// where the last one left off instead of appearing at its own width.
+let lastProgress = 0;
+
 function ProgressBar({ progress }: { progress: number }) {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
+  const target = Math.max(0, Math.min(1, progress));
   // Held in state (not a ref) so it can be read during render without tripping
   // the react-hooks refs rule; created once via the lazy initializer.
-  const [anim] = useState(() => new Animated.Value(Math.max(0, Math.min(1, progress))));
+  const [anim] = useState(() => new Animated.Value(lastProgress));
 
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: Math.max(0, Math.min(1, progress)),
-      duration: reduceMotion ? 0 : 260,
-      useNativeDriver: false,
-    }).start();
-  }, [anim, progress, reduceMotion]);
+  // Focus (not just mount) so navigating back also re-syncs the carried value.
+  useFocusEffect(
+    useCallback(() => {
+      lastProgress = target;
+      Animated.timing(anim, {
+        toValue: target,
+        duration: reduceMotion ? 0 : 260,
+        useNativeDriver: false,
+      }).start();
+    }, [anim, target, reduceMotion]),
+  );
 
   const width = anim.interpolate({
     inputRange: [0, 1],

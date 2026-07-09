@@ -1,0 +1,148 @@
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { ProgressBar } from '@/components/dashboard/progress-bar';
+import { sampleWeightSeriesKg } from '@/components/dashboard/sample-data';
+import { Sparkline } from '@/components/dashboard/sparkline';
+import { ThemedText } from '@/components/themed-text';
+import { Card } from '@/components/ui/card';
+import { Fonts, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { fromKg, kgToLb, kgToStLb, type WeightUnit } from '@/lib/health';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Sample journey: the user started this far from today's weight. */
+const SAMPLE_START_OFFSET_KG = 3.6;
+
+const formatWeight = (kg: number, unit: WeightUnit): string => {
+  if (unit === 'st') {
+    const { st, lb } = kgToStLb(kg);
+    return `${st} st ${lb} lb`;
+  }
+  return `${fromKg(kg, unit).toFixed(1)} ${unit}`;
+};
+
+/** Small deltas read better in lb than fractional stone. */
+const formatDelta = (kg: number, unit: WeightUnit): string =>
+  unit === 'st' ? `${kgToLb(Math.abs(kg)).toFixed(1)} lb` : formatWeight(Math.abs(kg), unit);
+
+type Props = {
+  weightKg: number;
+  goalWeightKg?: number;
+  weightUnit: WeightUnit;
+};
+
+/**
+ * 14-day weight trend (sample series anchored to the profile's real weight)
+ * plus journey progress toward the goal weight and a naive on-pace projection
+ * from the current weekly rate.
+ */
+export function WeightCard({ weightKg, goalWeightKg, weightUnit }: Props) {
+  const theme = useTheme();
+  // Captured once per mount — render-stable, and satisfies react-hooks/purity.
+  const [now] = useState(() => Date.now());
+
+  const series = sampleWeightSeriesKg(weightKg, goalWeightKg);
+  const weekDeltaKg = series[series.length - 1] - series[series.length - 8];
+  const falling = weekDeltaKg < 0;
+
+  // Journey math — only when a goal weight exists and differs from today.
+  const direction =
+    goalWeightKg === undefined || goalWeightKg === weightKg
+      ? 0
+      : goalWeightKg < weightKg
+        ? 1
+        : -1;
+  const hasGoal = direction !== 0 && goalWeightKg !== undefined;
+  const startKg = weightKg + direction * SAMPLE_START_OFFSET_KG;
+  const remainingKg = hasGoal ? Math.abs(weightKg - goalWeightKg) : 0;
+  const journeyFraction = hasGoal
+    ? SAMPLE_START_OFFSET_KG / (SAMPLE_START_OFFSET_KG + remainingKg)
+    : 0;
+
+  // On pace only when the trend actually moves toward the goal at a real rate.
+  const movingTowardGoal = weekDeltaKg * direction < 0;
+  const weeksToGoal = remainingKg / Math.abs(weekDeltaKg);
+  const projectedDate =
+    hasGoal && movingTowardGoal && Math.abs(weekDeltaKg) >= 0.05 && weeksToGoal <= 104
+      ? new Date(now + weeksToGoal * 7 * DAY_MS).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+        })
+      : null;
+
+  return (
+    <Card>
+      <View style={styles.header}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
+          WEIGHT
+        </ThemedText>
+        {hasGoal && (
+          <ThemedText type="small" themeColor="textSecondary">
+            goal {formatWeight(goalWeightKg, weightUnit)}
+          </ThemedText>
+        )}
+      </View>
+
+      <View style={styles.heroRow}>
+        <ThemedText style={styles.hero}>{formatWeight(weightKg, weightUnit)}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {falling ? '▼' : '▲'} {formatDelta(weekDeltaKg, weightUnit)} this week
+        </ThemedText>
+      </View>
+
+      <Sparkline
+        data={series}
+        color={theme.tint}
+        accessibilityLabel={`Weight over the last 14 days, from ${formatWeight(series[0], weightUnit)} to ${formatWeight(weightKg, weightUnit)}`}
+      />
+      <ThemedText type="small" themeColor="textSecondary">
+        14-day trend
+      </ThemedText>
+
+      {hasGoal && (
+        <View style={styles.journey}>
+          <ProgressBar fraction={journeyFraction} color={theme.tint} />
+          <View style={styles.journeyLabels}>
+            <ThemedText type="small" themeColor="textSecondary">
+              started {formatWeight(startKg, weightUnit)}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {Math.round(journeyFraction * 100)}% there
+              {projectedDate ? ` · on pace for ${projectedDate}` : ''}
+            </ThemedText>
+          </View>
+        </View>
+      )}
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  caps: {
+    letterSpacing: 1.2,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.two,
+  },
+  hero: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 32,
+    lineHeight: 38,
+  },
+  journey: {
+    gap: Spacing.one,
+    marginTop: Spacing.one,
+  },
+  journeyLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+});

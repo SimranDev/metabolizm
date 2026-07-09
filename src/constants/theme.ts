@@ -16,6 +16,11 @@ export const Colors = {
     textSecondary: '#60646C',
     tint: '#208AEF',
     danger: '#D93A3A',
+    // Macro accents — kept clearly distinct from `danger` so the over-budget
+    // red never blends with a macro segment.
+    carbs: '#E8890C',
+    fat: '#8E4EC6',
+    protein: '#12A594',
   },
   dark: {
     text: '#ffffff',
@@ -25,6 +30,9 @@ export const Colors = {
     textSecondary: '#B0B4BA',
     tint: '#3B95F5',
     danger: '#FF6B6B',
+    carbs: '#FFB224',
+    fat: '#B197FC',
+    protein: '#0BD8B6',
   },
 } as const;
 
