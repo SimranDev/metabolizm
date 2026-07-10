@@ -17,6 +17,7 @@ const BAR_HEIGHT = 80;
 const RING = (TRACK_HEIGHT - BAR_HEIGHT) / 2;
 /** Extra right-side gap that reveals the red pipe once over budget. */
 const OVER_INSET = 12;
+const BORDER_RADIUS = 8;
 
 type MacroColor = "carbs" | "fat" | "protein";
 
@@ -177,13 +178,13 @@ const styles = StyleSheet.create({
   },
   track: {
     height: TRACK_HEIGHT,
-    borderRadius: TRACK_HEIGHT / 2,
+    borderRadius: BORDER_RADIUS,
     padding: RING,
     marginTop: Spacing.one,
   },
   bar: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: BORDER_RADIUS,
     overflow: "hidden",
   },
   fill: {

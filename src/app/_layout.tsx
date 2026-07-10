@@ -37,6 +37,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={onboardingComplete}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="add-food" options={{ presentation: 'fullScreenModal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!onboardingComplete}>
           <Stack.Screen name="(onboarding)" />
