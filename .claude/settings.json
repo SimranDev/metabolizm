@@ -17,7 +17,10 @@
       "Bash(npx expo *)",
       "Bash(git rm *)",
       "Bash(pnpm lint *)",
-      "Bash(grep -oE \"\\\\`/[a-z-]*\\\\`|StaticRoutes = [^;]*\" .expo/types/router.d.ts)"
+      "Bash(grep -oE \"\\\\`/[a-z-]*\\\\`|StaticRoutes = [^;]*\" .expo/types/router.d.ts)",
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(echo \"LINT_EXIT=$?\")",
+      "Read(//tmp/**)"
     ]
   },
   "enabledPlugins": {
