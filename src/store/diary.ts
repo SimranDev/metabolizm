@@ -14,7 +14,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { FoodAccent, FoodSearchItem } from "@/lib/food";
+import type { FoodAccent, FoodSearchItem, FoodUnit } from "@/lib/food";
 import type { Macros } from "@/lib/health";
 
 import { zustandMmkvStorage } from "./storage";
@@ -30,6 +30,11 @@ export type DiaryEntry = {
   macros: Macros;
   accent: FoodAccent;
   verified: boolean;
+  /** USDA food id, so the entry can be reopened/edited on the nutrition screen. */
+  fdcId?: string;
+  /** Amount + unit chosen on the nutrition screen (absent for quick-added foods). */
+  quantity?: number;
+  unit?: FoodUnit;
 };
 
 export type Meal = {
@@ -94,9 +99,13 @@ type PersistedDiary = {
   recentFoods: FoodSearchItem[];
 };
 
+/** Fields the nutrition screen recomputes when a logged food's amount is edited. */
+export type EntryPatch = Pick<DiaryEntry, "serving" | "calories" | "macros" | "quantity" | "unit">;
+
 type DiaryState = PersistedDiary & {
   currentDate: string;
   addEntries: (mealId: MealId, foods: FoodSearchItem[]) => void;
+  updateEntry: (mealId: MealId, entryId: string, patch: EntryPatch) => void;
   removeEntry: (mealId: MealId, entryId: string) => void;
   setDate: (date: string) => void;
 };
@@ -121,6 +130,9 @@ export const useDiary = create<DiaryState>()(
             macros: food.macros,
             accent: food.accent,
             verified: food.verified,
+            fdcId: food.id,
+            quantity: food.quantity,
+            unit: food.unit,
           }));
           return {
             entriesByDate: pruneDays({
@@ -128,6 +140,21 @@ export const useDiary = create<DiaryState>()(
               [state.currentDate]: { ...day, [mealId]: [...day[mealId], ...added] },
             }),
             recentFoods: addRecents(state.recentFoods, foods),
+          };
+        }),
+      updateEntry: (mealId, entryId, patch) =>
+        set((state) => {
+          const day = state.entriesByDate[state.currentDate] ?? emptyEntries();
+          return {
+            entriesByDate: {
+              ...state.entriesByDate,
+              [state.currentDate]: {
+                ...day,
+                [mealId]: day[mealId].map((entry) =>
+                  entry.entryId === entryId ? { ...entry, ...patch } : entry,
+                ),
+              },
+            },
           };
         }),
       removeEntry: (mealId, entryId) =>
