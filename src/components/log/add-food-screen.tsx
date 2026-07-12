@@ -1,6 +1,6 @@
 import { FontAwesomeFreeSolid } from "@react-native-vector-icons/fontawesome-free-solid";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,6 +10,7 @@ import { Fonts, Spacing } from "@/constants/theme";
 import { useFoodSearch } from "@/hooks/use-food-search";
 import { useTheme } from "@/hooks/use-theme";
 import { toMealId, useDiary } from "@/store/diary";
+import { useFoodSelection } from "@/store/food-selection";
 
 import type { FoodSearchItem } from "@/lib/food";
 
@@ -42,21 +43,20 @@ export function AddFoodScreen({ meal }: Props) {
   const addEntries = useDiary((s) => s.addEntries);
   const recentFoods = useDiary((s) => s.recentFoods);
 
+  // The multi-select lives in a store (not local state) so the pushed
+  // nutrition-info screen can add a configured food to it. Cleared on mount so
+  // each add-food session starts fresh; the full items resolve the footer even
+  // for live USDA results whose ids aren't in the recents list.
+  const selectedItems = useFoodSelection((s) => s.items);
+  const toggle = useFoodSelection((s) => s.toggle);
+  const clearSelection = useFoodSelection((s) => s.clear);
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection]);
+
   const [method, setMethod] = useState<InputMethodId>("search");
   const [filter, setFilter] = useState<FoodFilterId>("all");
   const [query, setQuery] = useState("");
-  // Selections hold the full item (not just an id) so live USDA results — whose
-  // ids aren't in RECENT_FOODS — still resolve in the footer.
-  const [selectedItems, setSelectedItems] = useState<Record<string, FoodSearchItem>>({});
-
-  const toggle = (item: FoodSearchItem) =>
-    setSelectedItems((prev) => {
-      if (prev[item.id]) {
-        const { [item.id]: _removed, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [item.id]: item };
-    });
 
   const { items, loading, error } = useFoodSearch(query);
 
@@ -139,6 +139,12 @@ export function AddFoodScreen({ meal }: Props) {
                 item={item}
                 selected={!!selectedItems[item.id]}
                 onToggle={() => toggle(item)}
+                onOpen={() =>
+                  router.push({
+                    pathname: "/food-detail",
+                    params: { fdcId: item.id, meal, mode: "add" },
+                  })
+                }
               />
             ))}
           </View>
@@ -267,15 +273,21 @@ function FoodRow({
   item,
   selected,
   onToggle,
+  onOpen,
 }: {
   item: FoodSearchItem;
   selected: boolean;
   onToggle: () => void;
+  onOpen: () => void;
 }) {
   const theme = useTheme();
   return (
     <View style={[styles.foodRow, { borderBottomColor: theme.backgroundSelected }]}>
-      <View style={styles.foodInfo}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name} details`}
+        onPress={onOpen}
+        style={({ pressed }) => [styles.foodInfo, pressed && styles.pressed]}>
         <View style={styles.foodNameRow}>
           <ThemedText style={styles.foodName} numberOfLines={1}>
             {item.name}
@@ -290,7 +302,7 @@ function FoodRow({
             {item.calories.toLocaleString()} Cal · {item.serving}
           </ThemedText>
         </View>
-      </View>
+      </Pressable>
 
       <Pressable
         accessibilityRole="button"

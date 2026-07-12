@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Fonts, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import type { FoodAccent } from "@/lib/food";
-import { mealCalories, type DiaryEntry, type Meal } from "@/store/diary";
+import { mealCalories, type DiaryEntry, type Meal, type MealId } from "@/store/diary";
 
 const FOOD_TILE = 40;
 const ADD_BUTTON = 26;
@@ -57,7 +57,7 @@ export function MealSection({ meal }: Props) {
           {meal.entries.map((entry, index) => (
             <View key={entry.entryId}>
               {index > 0 && <Divider />}
-              <FoodEntryRow entry={entry} />
+              <FoodEntryRow entry={entry} mealId={meal.id} />
             </View>
           ))}
         </Card>
@@ -66,13 +66,25 @@ export function MealSection({ meal }: Props) {
   );
 }
 
-function FoodEntryRow({ entry }: { entry: DiaryEntry }) {
+function FoodEntryRow({ entry, mealId }: { entry: DiaryEntry; mealId: MealId }) {
   const theme = useTheme();
+  const router = useRouter();
+  // Only foods logged with a USDA id can be reopened for editing; leave older
+  // entries (logged before quantity/unit tracking) inert.
+  const fdcId = entry.fdcId;
+  const onPress = fdcId
+    ? () =>
+        router.push({
+          pathname: "/food-detail",
+          params: { fdcId, meal: mealId, mode: "edit", entryId: entry.entryId },
+        })
+    : undefined;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${entry.name}, ${entry.serving}, ${entry.calories} calories`}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && onPress && styles.pressed]}>
       <ThemedView type="backgroundSelected" style={styles.tile}>
         <FontAwesomeFreeSolid name={ACCENT_ICON[entry.accent]} size={18} color={theme[entry.accent]} />
       </ThemedView>
