@@ -67,7 +67,10 @@
       "Bash(adb -s emulator-5554 shell input tap 981 2696)",
       "Bash(adb -s emulator-5554 shell \"sleep 2.5\")",
       "Bash(git diff *)",
-      "Bash(grep -iE \"#[0-9a-f]{3,8}\\\\b\")"
+      "Bash(grep -iE \"#[0-9a-f]{3,8}\\\\b\")",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(git check-ignore *)",
+      "Bash(sed -i '' 's|/log|/dashboard|g' .expo/types/router.d.ts)"
     ]
   },
   "enabledPlugins": {
