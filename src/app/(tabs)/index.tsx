@@ -1,204 +1,42 @@
-import { SymbolView } from 'expo-symbols';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { EnergyBalanceCard } from '@/components/dashboard/energy-balance-card';
-import { FastingCard } from '@/components/dashboard/fasting-card';
-import { InsightCard } from '@/components/dashboard/insight-card';
-import { MacrosCard } from '@/components/dashboard/macros-card';
-import { MicrosCard } from '@/components/dashboard/micros-card';
-import { SAMPLE } from '@/components/dashboard/sample-data';
-import { ScoreCard } from '@/components/dashboard/score-card';
-import { StatTile, TileGrid } from '@/components/dashboard/stat-tile';
-import { WaterCard } from '@/components/dashboard/water-card';
-import { WeekStrip } from '@/components/dashboard/week-strip';
-import { WeightCard } from '@/components/dashboard/weight-card';
+import { MealSection } from '@/components/log/meal-section';
+import { NutritionSummaryCard } from '@/components/log/nutrition-summary-card';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Badge } from '@/components/ui/badge';
-import { ageFromDob, bmi, bmiCategory, maintenanceCalories } from '@/lib/health';
+import { useConsumed, useMeals } from '@/store/diary';
 import { useProfile } from '@/store/profile';
 import { BottomTabInset, Spacing } from '@/theme';
 
 /**
- * The daily overview. Everything below the fold is SAMPLE data (see
- * [sample-data.ts](../../components/dashboard/sample-data.ts)) — but all the
- * math that *can* be real already is: BMI, maintenance calories, macro targets,
- * and unit formatting come from the profile and the health lib.
+ * The Log tab — the landing screen. It owns the `index` route because native
+ * tabs always open on `index.tsx` (there is no initial-tab override), and
+ * logging is the app's core loop.
  */
-export default function DashboardScreen() {
+export default function LogScreen() {
   const profile = useProfile((s) => s.profile);
+  const meals = useMeals();
+  const consumed = useConsumed();
 
   // Unreachable in practice (the root gate requires onboarding), but fail safe.
   if (!profile) {
-    return <PlaceholderScreen title="Dashboard" />;
+    return <PlaceholderScreen title="Log" />;
   }
-
-  const maintenance = maintenanceCalories({
-    sex: profile.sex,
-    ageYears: ageFromDob(new Date(profile.dob)),
-    heightCm: profile.heightCm,
-    weightKg: profile.weightKg,
-    goalWeightKg: profile.goalWeightKg,
-    goal: profile.goal,
-    activityLevel: profile.activityLevel,
-  });
-  const bmiValue = bmi(profile.weightKg, profile.heightCm);
-  const bmiLabel = bmiCategory(bmiValue);
-
-  const { activity, sleep, heart } = SAMPLE;
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleRow}>
-          <ThemedText type="h1">Today</ThemedText>
-          <StreakPill days={SAMPLE.streakDays} />
-        </View>
-
-        <ScoreCard
-          total={SAMPLE.score.total}
-          delta={SAMPLE.score.delta}
-          factors={SAMPLE.score.factors}
-        />
-
-        <SectionLabel>Energy</SectionLabel>
-        <EnergyBalanceCard
-          eaten={SAMPLE.consumed.calories}
-          baselineBurn={maintenance * SAMPLE.dayFraction}
-          activeBurn={activity.activeCalories}
+        <NutritionSummaryCard
           targetCalories={profile.targetCalories}
-        />
-        <WeekStrip calories={SAMPLE.weekCalories} target={profile.targetCalories} />
-
-        <SectionLabel>Nutrition</SectionLabel>
-        <MacrosCard consumed={SAMPLE.consumed.macros} targets={profile.macros} />
-        <MicrosCard micros={SAMPLE.micros} />
-        <WaterCard
-          initialGlasses={SAMPLE.water.glasses}
-          goalGlasses={SAMPLE.water.goalGlasses}
-          mlPerGlass={SAMPLE.water.mlPerGlass}
-        />
-        <FastingCard
-          hoursFasted={SAMPLE.fasting.hoursFasted}
-          goalHours={SAMPLE.fasting.goalHours}
-          lastMeal={SAMPLE.fasting.lastMeal}
+          consumedCalories={consumed.calories}
+          consumedMacros={consumed.macros}
         />
 
-        <SectionLabel>Activity</SectionLabel>
-        <TileGrid>
-          <StatTile
-            icon={{ ios: 'figure.walk', android: 'directions_walk' }}
-            label="Steps"
-            value={activity.steps.toLocaleString()}
-            sub={`of ${activity.stepGoal.toLocaleString()}`}
-            progress={activity.steps / activity.stepGoal}
-          />
-          <StatTile
-            icon={{ ios: 'flame.fill', android: 'local_fire_department' }}
-            label="Active energy"
-            value={`${activity.activeCalories} cal`}
-            sub="▲ 32 vs 7-day avg"
-          />
-          <StatTile
-            icon={{ ios: 'figure.run', android: 'directions_run' }}
-            label="Exercise"
-            value={`${activity.exerciseMinutes} min`}
-            sub={`of ${activity.exerciseGoalMinutes} min`}
-            progress={activity.exerciseMinutes / activity.exerciseGoalMinutes}
-          />
-          <StatTile
-            icon={{ ios: 'map.fill', android: 'map' }}
-            label="Distance"
-            value={`${activity.distanceKm} km`}
-            sub="walking + running"
-          />
-        </TileGrid>
-
-        <SectionLabel>Body</SectionLabel>
-        <WeightCard
-          weightKg={profile.weightKg}
-          goalWeightKg={profile.goalWeightKg}
-          weightUnit={profile.weightUnit}
-        />
-        <TileGrid>
-          <StatTile
-            icon={{ ios: 'figure.arms.open', android: 'accessibility_new' }}
-            label="BMI"
-            value={bmiValue.toFixed(1)}
-            sub={bmiLabel[0].toUpperCase() + bmiLabel.slice(1)}
-          />
-          <StatTile
-            icon={{ ios: 'percent', android: 'percent' }}
-            label="Body fat"
-            value={`${SAMPLE.bodyFatPct}%`}
-            sub="estimated from trend"
-          />
-        </TileGrid>
-
-        <SectionLabel>Recovery</SectionLabel>
-        <TileGrid>
-          <StatTile
-            icon={{ ios: 'bed.double.fill', android: 'bedtime' }}
-            label="Sleep"
-            value={sleep.lastNight}
-            sub={`quality ${sleep.qualityPct}%`}
-          />
-          <StatTile
-            icon={{ ios: 'heart.fill', android: 'favorite' }}
-            label="Resting HR"
-            value={`${heart.restingBpm} bpm`}
-            sub={`▼ ${Math.abs(heart.restingDelta)} vs 30-day avg`}
-          />
-          <StatTile
-            icon={{ ios: 'waveform.path.ecg', android: 'monitor_heart' }}
-            label="HRV"
-            value={`${heart.hrvMs} ms`}
-            sub={`▲ ${heart.hrvDelta} vs 30-day avg`}
-          />
-          <StatTile
-            icon={{ ios: 'lungs.fill', android: 'air' }}
-            label="VO₂ max"
-            value={`${heart.vo2Max}`}
-            sub="excellent for your age"
-          />
-        </TileGrid>
-
-        <InsightCard text={SAMPLE.insight} />
-
-        <ThemedText type="sm" themeColor="textSecondary" style={styles.note}>
-          Sample data — logging and Apple Health / Health Connect sync are coming soon.
-        </ThemedText>
+        {meals.map((meal) => (
+          <MealSection key={meal.id} meal={meal} />
+        ))}
       </ScrollView>
     </ThemedView>
-  );
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <ThemedText type="micro" themeColor="textSecondary" style={styles.section}>
-      {children}
-    </ThemedText>
-  );
-}
-
-function StreakPill({ days }: { days: number }) {
-  return (
-    <View accessible accessibilityLabel={`${days}-day logging streak`}>
-      {/* Streaks are an allowed accent role. */}
-      <Badge
-        variant="accent"
-        label={`${days}-day streak`}
-        icon={(color) => (
-          <SymbolView
-            name={{ ios: 'flame.fill', android: 'local_fire_department' }}
-            size={16}
-            tintColor={color}
-            fallback={<View />}
-          />
-        )}
-      />
-    </View>
   );
 }
 
@@ -209,18 +47,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.s24,
     paddingBottom: BottomTabInset + Spacing.s24,
-    gap: Spacing.s16,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  section: {
-    marginTop: Spacing.s8,
-    marginBottom: -Spacing.s8,
-  },
-  note: {
-    textAlign: 'center',
+    gap: Spacing.s24,
   },
 });

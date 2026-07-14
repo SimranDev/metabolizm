@@ -16,14 +16,15 @@ export default function AppTabs() {
         default: { fontFamily: Fonts.sansMedium, color: colors.textSecondary },
         selected: { color: colors.onAccent, fontFamily: Fonts.sansMedium },
       }}>
+      {/* Log owns the index route so it's the landing tab. */}
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Dashboard</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" md="dashboard" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="log">
         <NativeTabs.Trigger.Label>Log</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="square.and.pencil" md="edit_note" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="dashboard">
+        <NativeTabs.Trigger.Label>Dashboard</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" md="dashboard" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="recipes">
