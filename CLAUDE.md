@@ -36,7 +36,9 @@ There are no checked-in `ios/` or `android/` directories (gitignored); native pr
 
 ## Architecture
 
-Routing is file-based via expo-router (`main: "expo-router/entry"`). Routes live in [src/app/](src/app/): `index.tsx` (Dashboard), `log.tsx` (Log), `recipes.tsx` (Recipes), `profile.tsx` (Profile), and `_layout.tsx` — the root layout, which loads the Inter fonts (`useFonts`, gating render on load), sets up the ThemeProvider and splash overlay, and renders the shared [app-header.tsx](src/components/app-header.tsx) above the tabs. The header (plan icon · date · profile button) is persistent across all tabs because native tabs don't provide one.
+Routing is file-based via expo-router (`main: "expo-router/entry"`). [src/app/_layout.tsx](src/app/_layout.tsx) is the root layout: it loads the Space Grotesk / Instrument Sans fonts (`useFonts`, gating render on load), sets up the ThemeProvider and splash overlay, and gates first-run via a Stack — the `(onboarding)` group until `onboardingComplete`, then the `(tabs)` group plus the `add-food` / `food-detail` full-screen modals.
+
+Tab routes live in [src/app/(tabs)/](src/app/(tabs)/): `index.tsx` (**Log — the landing tab**; it owns the index route because native tabs always open on `index.tsx` and there is no initial-tab override), `dashboard.tsx` (placeholder until the dashboard design is finalized — the previous draft components remain in [src/components/dashboard/](src/components/dashboard/), currently unreferenced), `recipes.tsx`, and `profile.tsx`. The group's [_layout.tsx](src/app/(tabs)/_layout.tsx) renders the shared [app-header.tsx](src/components/app-header.tsx) (plan icon · date · profile button) above the tabs — persistent across all tabs because native tabs don't provide a header.
 
 **Platform-split components** are a starter pattern: files with a `.web.tsx`/`.web.ts` suffix replace their native counterpart on web. Web is not a shipping target (see Project), so the `.web.*` files are effectively legacy — but keep them in sync if you touch the native side, since they still get bundled.
 
