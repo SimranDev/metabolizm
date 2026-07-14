@@ -3,11 +3,10 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
+import { Badge } from './ui/badge';
 
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Radius, Spacing, useTheme } from '@/theme';
 
 const ICON_SIZE = 40;
 
@@ -17,13 +16,13 @@ const ICON_SIZE = 40;
  */
 export function AppHeader() {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   return (
     <ThemedView
       style={[
         styles.header,
-        { paddingTop: insets.top + Spacing.two, borderBottomColor: theme.backgroundSelected },
+        { paddingTop: insets.top + Spacing.s8, borderBottomColor: colors.border },
       ]}>
       <View style={styles.side}>
         <PlanIcon />
@@ -43,13 +42,13 @@ export function AppHeader() {
  * (free / pro / pro max).
  */
 function PlanIcon() {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
-    <ThemedView type="backgroundSelected" style={styles.iconBox}>
+    <ThemedView type="surfaceSunken" style={styles.iconBox}>
       <SymbolView
         name={{ ios: 'bolt.fill', android: 'bolt' }}
         size={22}
-        tintColor={theme.textSecondary}
+        tintColor={colors.textSecondary}
         fallback={<View />}
       />
     </ThemedView>
@@ -60,7 +59,6 @@ function PlanIcon() {
  * Date placeholder. Will become a calendar / day-switching control.
  */
 function DateSwitcher() {
-  const theme = useTheme();
   const label = new Date().toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
@@ -69,15 +67,17 @@ function DateSwitcher() {
 
   return (
     <Pressable onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView type="backgroundElement" style={styles.datePill}>
-        <ThemedText type="smallBold">{label}</ThemedText>
-        <SymbolView
-          name={{ ios: 'chevron.down', android: 'expand_more' }}
-          size={14}
-          tintColor={theme.textSecondary}
-          fallback={<View />}
-        />
-      </ThemedView>
+      <Badge
+        label={label}
+        trailing={(color) => (
+          <SymbolView
+            name={{ ios: 'chevron.down', android: 'expand_more' }}
+            size={14}
+            tintColor={color}
+            fallback={<View />}
+          />
+        )}
+      />
     </Pressable>
   );
 }
@@ -87,18 +87,18 @@ function DateSwitcher() {
  * tab. Will show the user's avatar image.
  */
 function ProfileButton() {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <Link href="/profile" asChild>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Profile settings"
         style={({ pressed }) => pressed && styles.pressed}>
-        <ThemedView type="backgroundSelected" style={styles.avatar}>
+        <ThemedView type="surfaceSunken" style={styles.avatar}>
           <SymbolView
             name={{ ios: 'person.fill', android: 'person' }}
             size={22}
-            tintColor={theme.textSecondary}
+            tintColor={colors.textSecondary}
             fallback={<View />}
           />
         </ThemedView>
@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingHorizontal: Spacing.s24,
+    paddingBottom: Spacing.s8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   side: {
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: ICON_SIZE,
     height: ICON_SIZE,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -138,14 +138,6 @@ const styles = StyleSheet.create({
     borderRadius: ICON_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  datePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
   },
   pressed: {
     opacity: 0.7,

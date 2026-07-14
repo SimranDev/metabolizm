@@ -4,8 +4,8 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar } from '@/components/dashboard/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StatNumber } from '@/components/ui/stat-number';
+import { Spacing, useTheme } from '@/theme';
 
 type Props = {
   hoursFasted: number;
@@ -21,7 +21,7 @@ const formatHours = (hours: number) => {
 
 /** Time since the last logged meal against a 16:8-style fasting window. */
 export function FastingCard({ hoursFasted, goalHours, lastMeal }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const remaining = Math.max(goalHours - hoursFasted, 0);
 
   return (
@@ -33,28 +33,23 @@ export function FastingCard({ hoursFasted, goalHours, lastMeal }: Props) {
           <SymbolView
             name={{ ios: 'timer', android: 'timer' }}
             size={15}
-            tintColor={theme.tint}
+            tintColor={colors.primary}
             fallback={<View />}
           />
-          <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-            FASTING
+          <ThemedText type="micro" themeColor="textSecondary">
+            Fasting
           </ThemedText>
         </View>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           16:8 window
         </ThemedText>
       </View>
 
-      <ThemedText style={styles.value}>
-        {formatHours(hoursFasted)}
-        <ThemedText type="small" themeColor="textSecondary">
-          {'  '}of {goalHours} h
-        </ThemedText>
-      </ThemedText>
+      <StatNumber value={formatHours(hoursFasted)} suffix={`  of ${goalHours} h`} size="sm" />
 
-      <ProgressBar fraction={hoursFasted / goalHours} color={theme.tint} />
+      <ProgressBar fraction={hoursFasted / goalHours} />
 
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="sm" themeColor="textSecondary" tabular>
         {remaining > 0 ? `${formatHours(remaining)} to go` : 'Window complete'} · last meal{' '}
         {lastMeal}
       </ThemedText>
@@ -71,14 +66,6 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-  },
-  caps: {
-    letterSpacing: 1.2,
-  },
-  value: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 24,
-    lineHeight: 30,
+    gap: Spacing.s4,
   },
 });

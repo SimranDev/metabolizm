@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
-import { TextField } from '@/components/onboarding/text-field';
+import { Input } from '@/components/ui/input';
 import { ThemedText } from '@/components/themed-text';
 import { signIn } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
@@ -45,7 +45,7 @@ export default function SignInScreen() {
       nextLabel={submitting ? 'Signing in…' : 'Sign in'}
       nextDisabled={submitting || !email || !password}
       onNext={onSubmit}>
-      <TextField
+      <Input
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -55,7 +55,7 @@ export default function SignInScreen() {
         autoComplete="email"
         textContentType="emailAddress"
       />
-      <TextField
+      <Input
         label="Password"
         value={password}
         onChangeText={setPassword}
@@ -67,7 +67,7 @@ export default function SignInScreen() {
       />
 
       {error ? (
-        <ThemedText type="small" themeColor="danger" style={styles.error}>
+        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
           {error}
         </ThemedText>
       ) : null}

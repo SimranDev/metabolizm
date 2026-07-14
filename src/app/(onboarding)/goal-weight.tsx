@@ -49,7 +49,7 @@ export default function GoalWeightScreen() {
       ) : null}
 
       {underweightGoal ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="sm" themeColor="dangerText">
           This goal falls in the underweight range (BMI under 18.5). Consider a higher target — you
           can always adjust later.
         </ThemedText>

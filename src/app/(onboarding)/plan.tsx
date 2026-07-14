@@ -7,8 +7,7 @@ import { LiveReadout } from '@/components/onboarding/live-readout';
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Radius, Spacing, useTheme } from '@/theme';
 import {
   buildCustomPlan,
   buildPlans,
@@ -28,7 +27,7 @@ const fmtDate = (iso: string) =>
 
 export default function PlanScreen() {
   const router = useRouter();
-  const theme = useTheme();
+  const { colors } = useTheme();
   const answers = useOnboarding();
   const metrics = buildMetrics(answers);
 
@@ -99,10 +98,10 @@ export default function PlanScreen() {
 
       {showCustom ? (
         <ThemedView
-          type={selectedId === 'custom' ? 'backgroundSelected' : 'backgroundElement'}
+          type="surfaceSunken"
           style={[
             styles.card,
-            { borderColor: selectedId === 'custom' ? theme.tint : 'transparent' },
+            { borderColor: selectedId === 'custom' ? colors.focusRing : 'transparent' },
           ]}>
           <Pressable
             accessibilityRole="button"
@@ -110,15 +109,15 @@ export default function PlanScreen() {
             onPress={() => setSelectedId('custom')}
             style={styles.cardHeader}>
             <View style={styles.cardText}>
-              <ThemedText type="smallBold" style={styles.cardLabel}>
+              <ThemedText type="smBold" style={styles.cardLabel}>
                 Custom
               </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="sm" themeColor="textSecondary">
                 Set your own weekly pace
               </ThemedText>
             </View>
             {selectedId === 'custom' ? (
-              <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              <ThemedText type="smBold" tabular style={{ color: colors.primary }}>
                 {roundCals(selectedPlan.targetCalories)} cal
               </ThemedText>
             ) : null}
@@ -131,11 +130,11 @@ export default function PlanScreen() {
                 minimumValue={0.1}
                 maximumValue={1.0}
                 step={0.05}
-                minimumTrackTintColor={theme.tint}
+                minimumTrackTintColor={colors.accent}
                 onValueChange={(v) => setCustomRate(direction * Math.round(v * 100) / 100)}
                 style={styles.slider}
               />
-              <ThemedText type="small" themeColor="textSecondary" style={styles.sliderLabel}>
+              <ThemedText type="sm" themeColor="textSecondary" style={styles.sliderLabel}>
                 {`${direction < 0 ? 'Lose' : 'Gain'} ~${Math.abs(customRate).toFixed(2)} kg/week`}
                 {selectedPlan.projectedDate
                   ? ` · reach goal ~${fmtDate(selectedPlan.projectedDate)}`
@@ -155,17 +154,17 @@ export default function PlanScreen() {
       />
 
       {selectedPlan.clamped ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="sm" themeColor="dangerText">
           Adjusted up to a safe minimum of {CALORIE_FLOOR[metrics.sex].toLocaleString()} cal/day.
         </ThemedText>
       ) : null}
       {selectedPlan.exceedsSafeRate ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="sm" themeColor="dangerText">
           This pace is faster than generally recommended (about 1% of bodyweight per week).
         </ThemedText>
       ) : null}
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
+      <ThemedText type="sm" themeColor="textSecondary" style={styles.disclaimer}>
         Estimates only, not medical advice. Check with a healthcare professional before making big
         changes.
       </ThemedText>
@@ -182,7 +181,7 @@ function PlanCard({
   selected: boolean;
   onPress: () => void;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -190,21 +189,25 @@ function PlanCard({
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
-        type={selected ? 'backgroundSelected' : 'backgroundElement'}
-        style={[styles.card, styles.cardHeader, { borderColor: selected ? theme.tint : 'transparent' }]}>
+        type="surfaceSunken"
+        style={[
+          styles.card,
+          styles.cardHeader,
+          { borderColor: selected ? colors.focusRing : 'transparent' },
+        ]}>
         <View style={styles.cardText}>
-          <ThemedText type="smallBold" style={styles.cardLabel}>
+          <ThemedText type="smBold" style={styles.cardLabel}>
             {plan.label}
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="sm" themeColor="textSecondary">
             {plan.description}
             {plan.projectedDate ? ` · reach goal ~${fmtDate(plan.projectedDate)}` : ''}
           </ThemedText>
         </View>
-        <ThemedText type="smallBold" style={[styles.cals, selected && { color: theme.tint }]}>
+        <ThemedText type="smBold" tabular style={[styles.cals, selected && { color: colors.primary }]}>
           {roundCals(plan.targetCalories)}
           {'\n'}
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="sm" themeColor="textSecondary">
             cal/day
           </ThemedText>
         </ThemedText>
@@ -215,19 +218,19 @@ function PlanCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.lg,
     borderWidth: 2,
-    padding: Spacing.three,
+    padding: Spacing.s16,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.s16,
   },
-  cardText: { flex: 1, gap: Spacing.half },
-  cardLabel: { fontSize: 16 },
+  cardText: { flex: 1, gap: 2 },
+  cardLabel: { fontSize: 15 },
   cals: { fontSize: 20, textAlign: 'right' },
-  sliderWrap: { marginTop: Spacing.three, gap: Spacing.two },
+  sliderWrap: { marginTop: Spacing.s16, gap: Spacing.s8 },
   slider: { height: 40 },
   sliderLabel: { textAlign: 'center' },
   disclaimer: { textAlign: 'center' },

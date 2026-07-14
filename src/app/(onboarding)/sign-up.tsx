@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 
 import { LiveReadout } from '@/components/onboarding/live-readout';
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
-import { TextField } from '@/components/onboarding/text-field';
+import { Input } from '@/components/ui/input';
 import { ThemedText } from '@/components/themed-text';
 import { signUp } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
@@ -82,7 +82,7 @@ export default function SignUpScreen() {
         ]}
       />
 
-      <TextField
+      <Input
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -92,7 +92,7 @@ export default function SignUpScreen() {
         autoComplete="email"
         textContentType="emailAddress"
       />
-      <TextField
+      <Input
         label="Password"
         value={password}
         onChangeText={setPassword}
@@ -104,7 +104,7 @@ export default function SignUpScreen() {
       />
 
       {error ? (
-        <ThemedText type="small" themeColor="danger" style={styles.error}>
+        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
           {error}
         </ThemedText>
       ) : null}

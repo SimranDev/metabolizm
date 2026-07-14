@@ -6,10 +6,10 @@ import { StyleSheet, View } from 'react-native';
 import { LiveReadout } from '@/components/onboarding/live-readout';
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
 import { ageFromDob } from '@/lib/health';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';
+import { useTheme } from '@/theme';
 
 const MIN_AGE = 13;
 const yearsAgo = (n: number) => {
@@ -20,7 +20,7 @@ const yearsAgo = (n: number) => {
 
 export default function DobScreen() {
   const router = useRouter();
-  const theme = useTheme();
+  const { colors } = useTheme();
   const storedDob = useOnboarding((s) => s.dob);
   const set = useOnboarding((s) => s.set);
 
@@ -49,7 +49,7 @@ export default function DobScreen() {
           // dialog that re-opens while mounted and traps the screen.
           presentation="inline"
           display="spinner"
-          accentColor={theme.tint}
+          accentColor={colors.primary}
           maximumDate={new Date()}
           minimumDate={yearsAgo(120)}
           onValueChange={(_event, next) => setDate(next)}
@@ -59,7 +59,7 @@ export default function DobScreen() {
       <LiveReadout items={[{ label: 'Your age', value: `${Math.max(age, 0)} yrs` }]} />
 
       {tooYoung ? (
-        <ThemedText type="small" themeColor="danger" style={styles.warn}>
+        <ThemedText type="sm" themeColor="dangerText" style={styles.warn}>
           You must be at least {MIN_AGE} to use Metabolizm.
         </ThemedText>
       ) : null}

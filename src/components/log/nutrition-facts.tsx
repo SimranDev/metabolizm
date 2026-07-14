@@ -2,9 +2,10 @@ import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Fonts, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { StatNumber } from "@/components/ui/stat-number";
 import type { Nutrition } from "@/lib/food";
+import { formatGrams } from "@/lib/food/units";
+import { Radius, Spacing, useTheme } from "@/theme";
 
 type Props = {
   nutrition: Nutrition;
@@ -12,12 +13,10 @@ type Props = {
   servingLabel: string;
 };
 
-const formatG = (n: number) => (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1));
-
-const grams = (n?: number) => (n == null ? null : `${formatG(n)}g`);
+const grams = (n?: number) => (n == null ? null : `${formatGrams(n)}g`);
 const milligrams = (n?: number) => (n == null ? null : `${Math.round(n)}mg`);
-const milligramsPrecise = (n?: number) => (n == null ? null : `${formatG(n)}mg`);
-const micrograms = (n?: number) => (n == null ? null : `${formatG(n)}mcg`);
+const milligramsPrecise = (n?: number) => (n == null ? null : `${formatGrams(n)}mg`);
+const micrograms = (n?: number) => (n == null ? null : `${formatGrams(n)}mcg`);
 
 /**
  * FDA-style Nutrition Facts label for a single chosen amount of food. Calories +
@@ -25,7 +24,7 @@ const micrograms = (n?: number) => (n == null ? null : `${formatG(n)}mcg`);
  * supplied that value. Themed (white label / light text; inverted in dark mode).
  */
 export function NutritionFacts({ nutrition, servingLabel }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const hasMicros =
     nutrition.vitaminDMcg != null ||
     nutrition.calciumMg != null ||
@@ -33,25 +32,31 @@ export function NutritionFacts({ nutrition, servingLabel }: Props) {
     nutrition.potassiumMg != null;
 
   return (
-    <ThemedView type="background" style={[styles.label, { borderColor: theme.text }]}>
-      <ThemedText style={styles.title}>Nutrition Facts</ThemedText>
-      <View style={[styles.ruleThin, { backgroundColor: theme.text }]} />
+    <ThemedView type="surface" style={[styles.label, { borderColor: colors.text }]}>
+      <ThemedText type="h2" themeColor="text">
+        Nutrition Facts
+      </ThemedText>
+      <View style={[styles.ruleThin, { backgroundColor: colors.text }]} />
 
       <View style={styles.servingRow}>
-        <ThemedText type="smallBold">Serving size</ThemedText>
-        <ThemedText type="smallBold">{servingLabel}</ThemedText>
+        <ThemedText type="smBold">Serving size</ThemedText>
+        <ThemedText type="smBold" tabular>
+          {servingLabel}
+        </ThemedText>
       </View>
 
-      <View style={[styles.ruleHeavy, { backgroundColor: theme.text }]} />
+      <View style={[styles.ruleHeavy, { backgroundColor: colors.text }]} />
 
       <View style={styles.caloriesRow}>
-        <ThemedText style={styles.caloriesLabel}>Calories</ThemedText>
-        <ThemedText style={styles.caloriesValue}>{nutrition.calories.toLocaleString()}</ThemedText>
+        <ThemedText type="h2" themeColor="text">
+          Calories
+        </ThemedText>
+        <StatNumber value={nutrition.calories} />
       </View>
 
-      <View style={[styles.ruleMedium, { backgroundColor: theme.text }]} />
+      <View style={[styles.ruleMedium, { backgroundColor: colors.text }]} />
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.amountLabel}>
+      <ThemedText type="sm" themeColor="textSecondary" style={styles.amountLabel}>
         Amount per serving
       </ThemedText>
 
@@ -67,7 +72,7 @@ export function NutritionFacts({ nutrition, servingLabel }: Props) {
 
       {hasMicros && (
         <>
-          <View style={[styles.ruleHeavy, { backgroundColor: theme.text }]} />
+          <View style={[styles.ruleHeavy, { backgroundColor: colors.text }]} />
           <Fact label="Vitamin D" value={micrograms(nutrition.vitaminDMcg)} />
           <Fact label="Calcium" value={milligrams(nutrition.calciumMg)} />
           <Fact label="Iron" value={milligramsPrecise(nutrition.ironMg)} />
@@ -91,17 +96,19 @@ function Fact({
   indent?: boolean;
   last?: boolean;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   if (value == null) return null;
   return (
     <View
       style={[
         styles.factRow,
         indent && styles.factIndent,
-        !last && { borderBottomColor: theme.text, borderBottomWidth: StyleSheet.hairlineWidth },
+        !last && { borderBottomColor: colors.text, borderBottomWidth: StyleSheet.hairlineWidth },
       ]}>
-      <ThemedText type={bold ? "smallBold" : "small"}>{label}</ThemedText>
-      <ThemedText type={bold ? "smallBold" : "small"}>{value}</ThemedText>
+      <ThemedText type={bold ? "smBold" : "sm"}>{label}</ThemedText>
+      <ThemedText type={bold ? "smBold" : "sm"} tabular>
+        {value}
+      </ThemedText>
     </View>
   );
 }
@@ -109,25 +116,20 @@ function Fact({
 const styles = StyleSheet.create({
   label: {
     borderWidth: 1.5,
-    borderRadius: 16,
-    padding: Spacing.three,
-  },
-  title: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 26,
-    lineHeight: 32,
+    borderRadius: Radius.lg,
+    padding: Spacing.s16,
   },
   ruleThin: {
     height: 1,
-    marginVertical: Spacing.one,
+    marginVertical: Spacing.s4,
   },
   ruleMedium: {
     height: 4,
-    marginVertical: Spacing.one,
+    marginVertical: Spacing.s4,
   },
   ruleHeavy: {
     height: 8,
-    marginVertical: Spacing.one,
+    marginVertical: Spacing.s4,
   },
   servingRow: {
     flexDirection: "row",
@@ -139,27 +141,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "baseline",
   },
-  caloriesLabel: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  caloriesValue: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 40,
-    lineHeight: 46,
-  },
   amountLabel: {
     textAlign: "right",
-    marginBottom: Spacing.one,
+    marginBottom: Spacing.s4,
   },
   factRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.s8,
   },
   factIndent: {
-    paddingLeft: Spacing.four,
+    paddingLeft: Spacing.s24,
   },
 });

@@ -1,16 +1,18 @@
 import { FontAwesomeFreeSolid } from "@react-native-vector-icons/fontawesome-free-solid";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Fonts, Spacing } from "@/constants/theme";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input } from "@/components/ui/input";
 import { useFoodSearch } from "@/hooks/use-food-search";
-import { useTheme } from "@/hooks/use-theme";
 import { toMealId, useDiary } from "@/store/diary";
 import { useFoodSelection } from "@/store/food-selection";
+import { macroColor, Radius, Spacing, useTheme } from "@/theme";
 
 import type { FoodSearchItem } from "@/lib/food";
 
@@ -37,11 +39,16 @@ type Props = {
 export function AddFoodScreen({ meal }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
+  const { colors } = useTheme();
   const label = mealLabel(meal);
 
   const addEntries = useDiary((s) => s.addEntries);
-  const recentFoods = useDiary((s) => s.recentFoods);
+  // Session snapshot, not a live subscription: "Add" reorders the persisted
+  // recents (selected foods move to the front), and re-rendering the keyed rows
+  // with a permuted order while the modal dismisses crashes Android's Fabric
+  // differ on RN 0.86 (addViewAt: "child already has a parent"). A frozen list
+  // also keeps rows from shuffling mid-session; the next open reads fresh.
+  const [recentFoods] = useState(() => useDiary.getState().recentFoods);
 
   // The multi-select lives in a store (not local state) so the pushed
   // nutrition-info screen can add a configured food to it. Cleared on mount so
@@ -90,25 +97,25 @@ export function AddFoodScreen({ meal }: Props) {
           ))}
         </View>
 
-        <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement }]}>
-          <FontAwesomeFreeSolid name="magnifying-glass" size={16} color={theme.textSecondary} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search for a food"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.searchInput, { color: theme.text }]}
-            returnKeyType="search"
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <Pressable accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={Spacing.two}>
-              <FontAwesomeFreeSolid name="xmark" size={16} color={theme.textSecondary} />
-            </Pressable>
-          )}
-        </View>
+        <Input
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search for a food"
+          returnKeyType="search"
+          autoCorrect={false}
+          leading={
+            <FontAwesomeFreeSolid name="magnifying-glass" size={16} color={colors.textSecondary} />
+          }
+          trailing={
+            query.length > 0 ? (
+              <Pressable accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={Spacing.s8}>
+                <FontAwesomeFreeSolid name="xmark" size={16} color={colors.textSecondary} />
+              </Pressable>
+            ) : undefined
+          }
+        />
 
-        <View style={[styles.filters, { borderBottomColor: theme.backgroundSelected }]}>
+        <View style={[styles.filters, { borderBottomColor: colors.border }]}>
           {FOOD_FILTERS.map((f) => (
             <FilterTab key={f.id} label={f.label} active={filter === f.id} onPress={() => setFilter(f.id)} />
           ))}
@@ -118,20 +125,24 @@ export function AddFoodScreen({ meal }: Props) {
           <MethodPlaceholder method={method} />
         ) : showingSearch && loading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color={theme.textSecondary} />
+            <ActivityIndicator color={colors.textSecondary} />
           </View>
         ) : showingSearch && error ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.emptyState}>
+          <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
             {error}
           </ThemedText>
         ) : list.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.emptyState}>
+          <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
             {showingSearch ? `No foods matching "${trimmed}"` : "Nothing here yet"}
           </ThemedText>
         ) : (
-          <View>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>
-              {showingSearch ? "RESULTS" : "RECENT"}
+          // `collapsable={false}` keeps this wrapper as a real native view. Without
+          // it, Fabric flattens the styleless container and hoists the rows into the
+          // ScrollView; re-evaluating that on each selection re-render reparents an
+          // already-mounted row and crashes ("child already has a parent" / addViewAt).
+          <View collapsable={false}>
+            <ThemedText type="micro" themeColor="textSecondary" style={styles.sectionLabel}>
+              {showingSearch ? "Results" : "Recent"}
             </ThemedText>
             {list.map((item) => (
               <FoodRow
@@ -176,22 +187,20 @@ function Header({
   onClose: () => void;
   insetTop: number;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <View
       style={[
         styles.header,
-        { paddingTop: insetTop + Spacing.two, borderBottomColor: theme.backgroundSelected },
+        { paddingTop: insetTop + Spacing.s8, borderBottomColor: colors.border },
       ]}>
       <View style={styles.headerSide}>
-        <Pressable
-          accessibilityRole="button"
+        <IconButton
           accessibilityLabel="Go back"
           onPress={onBack}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <FontAwesomeFreeSolid name="arrow-left" size={20} color={theme.text} />
-        </Pressable>
+          variant="plain"
+          icon={(color) => <FontAwesomeFreeSolid name="arrow-left" size={20} color={color} />}
+        />
       </View>
 
       {/* Meal switcher — placeholder; opening a picker comes later. */}
@@ -199,23 +208,16 @@ function Header({
         accessibilityRole="button"
         accessibilityLabel={`Adding to ${meal}. Change meal`}
         style={({ pressed }) => [styles.titleButton, pressed && styles.pressed]}>
-        <ThemedText style={styles.title}>{meal}</ThemedText>
-        <FontAwesomeFreeSolid name="chevron-down" size={13} color={theme.text} />
+        <ThemedText type="h3">{meal}</ThemedText>
+        <FontAwesomeFreeSolid name="chevron-down" size={13} color={colors.text} />
       </Pressable>
 
       <View style={[styles.headerSide, styles.headerSideRight]}>
-        <Pressable
-          accessibilityRole="button"
+        <IconButton
           accessibilityLabel="Close"
           onPress={onClose}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [
-            styles.closeButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}>
-          <FontAwesomeFreeSolid name="xmark" size={16} color={theme.textSecondary} />
-        </Pressable>
+          icon={(color) => <FontAwesomeFreeSolid name="xmark" size={16} color={color} />}
+        />
       </View>
     </View>
   );
@@ -232,8 +234,9 @@ function MethodButton({
   active: boolean;
   onPress: () => void;
 }) {
-  const theme = useTheme();
-  const fg = active ? "#ffffff" : theme.textSecondary;
+  const { colors } = useTheme();
+  // Active tile is an allowed accent role (selected state).
+  const fg = active ? colors.onAccent : colors.textSecondary;
   return (
     <Pressable
       accessibilityRole="button"
@@ -242,11 +245,11 @@ function MethodButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.method,
-        { backgroundColor: active ? theme.tint : theme.backgroundElement },
+        { backgroundColor: active ? colors.accent : colors.surfaceSunken },
         pressed && styles.pressed,
       ]}>
       <FontAwesomeFreeSolid name={icon} size={22} color={fg} />
-      <ThemedText type="smallBold" style={{ color: fg }}>
+      <ThemedText type="smBold" style={{ color: fg }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -254,17 +257,19 @@ function MethodButton({
 }
 
 function FilterTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => [styles.filterTab, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" themeColor={active ? "text" : "textSecondary"}>
+      <ThemedText type="smBold" themeColor={active ? "text" : "textSecondary"}>
         {label}
       </ThemedText>
-      <View style={[styles.filterUnderline, { backgroundColor: active ? theme.text : "transparent" }]} />
+      <View
+        style={[styles.filterUnderline, { backgroundColor: active ? colors.accent : "transparent" }]}
+      />
     </Pressable>
   );
 }
@@ -280,25 +285,25 @@ function FoodRow({
   onToggle: () => void;
   onOpen: () => void;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
-    <View style={[styles.foodRow, { borderBottomColor: theme.backgroundSelected }]}>
+    <View style={[styles.foodRow, { borderBottomColor: colors.border }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${item.name} details`}
         onPress={onOpen}
         style={({ pressed }) => [styles.foodInfo, pressed && styles.pressed]}>
         <View style={styles.foodNameRow}>
-          <ThemedText style={styles.foodName} numberOfLines={1}>
+          <ThemedText type="smBold" style={styles.foodName} numberOfLines={1}>
             {item.name}
           </ThemedText>
           {item.verified && (
-            <FontAwesomeFreeSolid name="circle-check" size={14} color={theme.tint} />
+            <FontAwesomeFreeSolid name="circle-check" size={14} color={colors.primary} />
           )}
         </View>
         <View style={styles.foodMetaRow}>
-          <View style={[styles.dot, { backgroundColor: theme[item.accent] }]} />
-          <ThemedText type="small" themeColor="textSecondary">
+          <View style={[styles.dot, { backgroundColor: macroColor(colors, item.accent) }]} />
+          <ThemedText type="sm" themeColor="textSecondary" tabular>
             {item.calories.toLocaleString()} Cal · {item.serving}
           </ThemedText>
         </View>
@@ -309,20 +314,28 @@ function FoodRow({
         accessibilityState={{ selected }}
         accessibilityLabel={selected ? `Remove ${item.name}` : `Add ${item.name}`}
         onPress={onToggle}
-        hitSlop={Spacing.two}
+        hitSlop={Spacing.s8}
         style={({ pressed }) => [
           styles.addCircle,
-          { borderColor: theme.tint, backgroundColor: selected ? theme.tint : "transparent" },
+          // Selected toggle = accent (allowed active-state role).
+          {
+            borderColor: selected ? colors.accent : colors.borderStrong,
+            backgroundColor: selected ? colors.accent : "transparent",
+          },
           pressed && styles.pressed,
         ]}>
-        <FontAwesomeFreeSolid name={selected ? "check" : "plus"} size={14} color={selected ? "#ffffff" : theme.tint} />
+        <FontAwesomeFreeSolid
+          name={selected ? "check" : "plus"}
+          size={14}
+          color={selected ? colors.onAccent : colors.textSecondary}
+        />
       </Pressable>
     </View>
   );
 }
 
 function MethodPlaceholder({ method }: { method: InputMethodId }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const copy: Record<Exclude<InputMethodId, "search">, { icon: FoodSearchIconName; text: string }> = {
     photo: { icon: "camera", text: "Snap a photo of your meal — coming soon." },
     voice: { icon: "microphone", text: "Log by voice — coming soon." },
@@ -331,8 +344,8 @@ function MethodPlaceholder({ method }: { method: InputMethodId }) {
   const { icon, text } = copy[method as Exclude<InputMethodId, "search">];
   return (
     <View style={styles.placeholder}>
-      <FontAwesomeFreeSolid name={icon} size={32} color={theme.textSecondary} />
-      <ThemedText type="small" themeColor="textSecondary" style={styles.placeholderText}>
+      <FontAwesomeFreeSolid name={icon} size={32} color={colors.textSecondary} />
+      <ThemedText type="sm" themeColor="textSecondary" style={styles.placeholderText}>
         {text}
       </ThemedText>
     </View>
@@ -352,33 +365,24 @@ function Footer({
   insetBottom: number;
   onAdd: () => void;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const disabled = count === 0;
   return (
     <ThemedView
       style={[
         styles.footer,
-        { paddingBottom: insetBottom + Spacing.two, borderTopColor: theme.backgroundSelected },
+        { paddingBottom: insetBottom + Spacing.s8, borderTopColor: colors.border },
       ]}>
       <View>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           {count} {count === 1 ? "item" : "items"} selected
         </ThemedText>
-        <ThemedText style={styles.footerCalories}>{calories.toLocaleString()} cal</ThemedText>
+        <ThemedText type="h3" tabular>
+          {calories.toLocaleString()} cal
+        </ThemedText>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled }}
-        accessibilityLabel={`Add to ${mealName}`}
-        disabled={disabled}
-        onPress={onAdd}
-        style={({ pressed }) => [
-          styles.addToMeal,
-          { backgroundColor: theme.tint, opacity: disabled ? 0.4 : pressed ? 0.8 : 1 },
-        ]}>
-        <ThemedText style={styles.addToMealText}>Add to {mealName}</ThemedText>
-      </Pressable>
+      <Button label={`Add to ${mealName}`} disabled={disabled} onPress={onAdd} />
     </ThemedView>
   );
 }
@@ -394,73 +398,48 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingHorizontal: Spacing.s24,
+    paddingBottom: Spacing.s8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerSide: {
     flex: 1,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   headerSideRight: {
-    alignItems: "flex-end",
+    justifyContent: "flex-end",
   },
   titleButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.one,
-  },
-  title: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  closeButton: {
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: Spacing.s4,
   },
   content: {
-    padding: Spacing.four,
-    gap: Spacing.three,
+    padding: Spacing.s24,
+    gap: Spacing.s16,
   },
   methods: {
     flexDirection: "row",
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   method: {
     flex: 1,
     aspectRatio: 1,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.one,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    height: 48,
-    borderRadius: 14,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 16,
-    // Trim RN's default vertical padding so the text sits centered in the pill.
-    paddingVertical: 0,
+    gap: Spacing.s4,
   },
   filters: {
     flexDirection: "row",
-    gap: Spacing.four,
+    gap: Spacing.s24,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   filterTab: {
-    paddingBottom: Spacing.two,
-    gap: Spacing.two,
+    paddingBottom: Spacing.s8,
+    gap: Spacing.s8,
   },
   filterUnderline: {
     height: 2,
@@ -469,35 +448,32 @@ const styles = StyleSheet.create({
     marginBottom: -StyleSheet.hairlineWidth,
   },
   sectionLabel: {
-    letterSpacing: 1.2,
-    marginBottom: Spacing.one,
+    marginBottom: Spacing.s4,
   },
   foodRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
-    paddingVertical: Spacing.three,
+    gap: Spacing.s8,
+    paddingVertical: Spacing.s16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   foodInfo: {
     flex: 1,
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   foodNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   foodName: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
     flexShrink: 1,
   },
   foodMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   dot: {
     width: 8,
@@ -515,42 +491,27 @@ const styles = StyleSheet.create({
   placeholder: {
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.two,
-    paddingVertical: Spacing.six,
+    gap: Spacing.s8,
+    paddingVertical: Spacing.s64,
   },
   placeholderText: {
     textAlign: "center",
   },
   emptyState: {
     textAlign: "center",
-    paddingVertical: Spacing.five,
+    paddingVertical: Spacing.s32,
   },
   centerState: {
     alignItems: "center",
-    paddingVertical: Spacing.five,
+    paddingVertical: Spacing.s32,
   },
   footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.s24,
+    paddingTop: Spacing.s16,
     borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  footerCalories: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  addToMeal: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.five,
-  },
-  addToMealText: {
-    color: "#ffffff",
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 16,
   },
   pressed: {
     opacity: 0.6,

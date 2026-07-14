@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Spacing, Type, useTheme } from '@/theme';
 import {
   cmToFtIn,
   ftInToCm,
@@ -34,7 +33,7 @@ function BigInput({
   suffix: string;
   placeholder?: string;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <View style={styles.inputRow}>
       <TextInput
@@ -42,11 +41,11 @@ function BigInput({
         onChangeText={onChangeText}
         keyboardType="decimal-pad"
         placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        style={[styles.input, { color: theme.text }]}
+        placeholderTextColor={colors.textTertiary}
+        style={[styles.input, { color: colors.inkStrong }]}
         maxLength={5}
       />
-      <ThemedText type="subtitle" themeColor="textSecondary">
+      <ThemedText type="statSm" themeColor="textSecondary">
         {suffix}
       </ThemedText>
     </View>
@@ -215,16 +214,15 @@ export function HeightField({
 }
 
 const styles = StyleSheet.create({
-  field: { gap: Spacing.four, alignItems: 'center' },
-  stRow: { flexDirection: 'row', gap: Spacing.four },
+  field: { gap: Spacing.s24, alignItems: 'center' },
+  stRow: { flexDirection: 'row', gap: Spacing.s24 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   input: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 44,
+    ...Type.stat,
     minWidth: 90,
     textAlign: 'right',
   },

@@ -8,10 +8,10 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Card } from "@/components/ui/card";
-import { Fonts, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
+import { IconButton } from "@/components/ui/icon-button";
 import type { FoodAccent } from "@/lib/food";
 import { mealCalories, type DiaryEntry, type Meal, type MealId } from "@/store/diary";
+import { macroColor, Radius, Spacing, useTheme } from "@/theme";
 
 const FOOD_TILE = 40;
 const ADD_BUTTON = 26;
@@ -42,12 +42,20 @@ export function MealSection({ meal }: Props) {
     <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <ThemedText style={styles.mealLabel}>{meal.label}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="h3" themeColor="inkStrong">
+            {meal.label}
+          </ThemedText>
+          <ThemedText type="sm" themeColor="textSecondary" tabular>
             {total.toLocaleString()} cal
           </ThemedText>
         </View>
-        <AddButton label={`Add food to ${meal.label.toLowerCase()}`} onPress={openAddFood} />
+        <IconButton
+          accessibilityLabel={`Add food to ${meal.label.toLowerCase()}`}
+          onPress={openAddFood}
+          variant="primary"
+          size={ADD_BUTTON}
+          icon={(color) => <FontAwesomeFreeSolid name="plus" size={13} color={color} />}
+        />
       </View>
 
       {meal.entries.length === 0 ? (
@@ -67,7 +75,7 @@ export function MealSection({ meal }: Props) {
 }
 
 function FoodEntryRow({ entry, mealId }: { entry: DiaryEntry; mealId: MealId }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   // Only foods logged with a USDA id can be reopened for editing; leave older
   // entries (logged before quantity/unit tracking) inert.
@@ -85,20 +93,24 @@ function FoodEntryRow({ entry, mealId }: { entry: DiaryEntry; mealId: MealId }) 
       accessibilityLabel={`${entry.name}, ${entry.serving}, ${entry.calories} calories`}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && onPress && styles.pressed]}>
-      <ThemedView type="backgroundSelected" style={styles.tile}>
-        <FontAwesomeFreeSolid name={ACCENT_ICON[entry.accent]} size={18} color={theme[entry.accent]} />
+      <ThemedView type="surfaceSunken" style={styles.tile}>
+        <FontAwesomeFreeSolid
+          name={ACCENT_ICON[entry.accent]}
+          size={18}
+          color={macroColor(colors, entry.accent)}
+        />
       </ThemedView>
       <View style={styles.rowText}>
-        <ThemedText style={styles.foodName} numberOfLines={1}>
+        <ThemedText type="smBold" style={styles.foodName} numberOfLines={1}>
           {entry.name}
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        <ThemedText type="sm" themeColor="textSecondary" numberOfLines={1}>
           {entry.serving}
         </ThemedText>
       </View>
-      <ThemedText style={styles.calories}>
+      <ThemedText type="smBold" tabular>
         {entry.calories.toLocaleString()}
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary">
           {" "}
           cal
         </ThemedText>
@@ -107,26 +119,8 @@ function FoodEntryRow({ entry, mealId }: { entry: DiaryEntry; mealId: MealId }) 
   );
 }
 
-function AddButton({ label, onPress }: { label: string; onPress?: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      hitSlop={Spacing.two}
-      style={({ pressed }) => [
-        styles.addButton,
-        { backgroundColor: theme.tint },
-        pressed && styles.pressed,
-      ]}>
-      <FontAwesomeFreeSolid name="plus" size={13} color="#ffffff" />
-    </Pressable>
-  );
-}
-
 function EmptyMealButton({ label, onPress }: { label: string; onPress?: () => void }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -134,11 +128,11 @@ function EmptyMealButton({ label, onPress }: { label: string; onPress?: () => vo
       onPress={onPress}
       style={({ pressed }) => [
         styles.empty,
-        { borderColor: theme.backgroundSelected },
+        { borderColor: colors.borderStrong },
         pressed && styles.pressed,
       ]}>
-      <FontAwesomeFreeSolid name="plus" size={13} color={theme.textSecondary} />
-      <ThemedText type="smallBold" themeColor="textSecondary">
+      <FontAwesomeFreeSolid name="plus" size={13} color={colors.textSecondary} />
+      <ThemedText type="smBold" themeColor="textSecondary">
         Add {label.toLowerCase()}
       </ThemedText>
     </Pressable>
@@ -146,13 +140,13 @@ function EmptyMealButton({ label, onPress }: { label: string; onPress?: () => vo
 }
 
 function Divider() {
-  const theme = useTheme();
-  return <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />;
+  const { colors } = useTheme();
+  return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 }
 
 const styles = StyleSheet.create({
   section: {
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   header: {
     flexDirection: "row",
@@ -162,19 +156,7 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: Spacing.two,
-  },
-  mealLabel: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  addButton: {
-    width: ADD_BUTTON,
-    height: ADD_BUTTON,
-    borderRadius: ADD_BUTTON / 2,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: Spacing.s8,
   },
   // Rows own their own padding + dividers, so the card frame is flush.
   card: {
@@ -184,14 +166,14 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    gap: Spacing.s8,
+    paddingHorizontal: Spacing.s16,
+    paddingVertical: Spacing.s8,
   },
   tile: {
     width: FOOD_TILE,
     height: FOOD_TILE,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -200,28 +182,21 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   foodName: {
-    fontFamily: Fonts.sansSemiBold,
     fontSize: 15,
-    lineHeight: 20,
-  },
-  calories: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 16,
-    lineHeight: 22,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: Spacing.three,
+    marginHorizontal: Spacing.s16,
   },
   empty: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.two,
-    paddingVertical: Spacing.three,
+    gap: Spacing.s8,
+    paddingVertical: Spacing.s16,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderRadius: 16,
+    borderRadius: Radius.lg,
   },
   pressed: {
     opacity: 0.7,

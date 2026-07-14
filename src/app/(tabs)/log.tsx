@@ -4,8 +4,8 @@ import { MealSection } from "@/components/log/meal-section";
 import { NutritionSummaryCard } from "@/components/log/nutrition-summary-card";
 import { PlaceholderScreen } from "@/components/placeholder-screen";
 import { ThemedView } from "@/components/themed-view";
-import { BottomTabInset, Spacing } from "@/constants/theme";
 import { useConsumed, useMeals } from "@/store/diary";
+import { BottomTabInset, Spacing } from "@/theme";
 import { useProfile } from "@/store/profile";
 
 export default function LogScreen() {
@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-    gap: Spacing.four,
+    paddingHorizontal: Spacing.s24,
+    paddingBottom: BottomTabInset + Spacing.s24,
+    gap: Spacing.s24,
   },
 });

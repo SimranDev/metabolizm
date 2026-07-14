@@ -1,17 +1,19 @@
 import { FontAwesomeFreeSolid } from "@react-native-vector-icons/fontawesome-free-solid";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Fonts, Spacing } from "@/constants/theme";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input } from "@/components/ui/input";
 import { useFoodDetail } from "@/hooks/use-food-detail";
-import { useTheme } from "@/hooks/use-theme";
 import { scaleNutrition, type FoodSearchItem, type FoodUnit } from "@/lib/food";
 import { toMealId, useDiary } from "@/store/diary";
 import { useFoodSelection } from "@/store/food-selection";
+import { Spacing, useTheme } from "@/theme";
 
 import { NutritionFacts } from "./nutrition-facts";
 import { UnitPicker } from "./unit-picker";
@@ -46,7 +48,7 @@ function servingText(qty: number, unit: FoodUnit): string {
 export function FoodDetailScreen({ fdcId, meal, mode, entryId }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   const { detail, loading, error, reload } = useFoodDetail(fdcId);
   const upsert = useFoodSelection((s) => s.upsert);
@@ -110,60 +112,31 @@ export function FoodDetailScreen({ fdcId, meal, mode, entryId }: Props) {
       <View
         style={[
           styles.header,
-          { paddingTop: insets.top + Spacing.two, borderBottomColor: theme.backgroundSelected },
+          { paddingTop: insets.top + Spacing.s8, borderBottomColor: colors.border },
         ]}>
-        <Pressable
-          accessibilityRole="button"
+        <IconButton
           accessibilityLabel="Go back"
           onPress={() => router.back()}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [
-            styles.backButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}>
-          <FontAwesomeFreeSolid name="arrow-left" size={18} color={theme.text} />
-        </Pressable>
+          icon={(color) => <FontAwesomeFreeSolid name="arrow-left" size={18} color={color} />}
+        />
 
-        <ThemedText style={styles.title} numberOfLines={1}>
+        <ThemedText type="h3" style={styles.title} numberOfLines={1}>
           {detail?.name ?? "Nutrition facts"}
         </ThemedText>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSave }}
-          accessibilityLabel="Save"
-          disabled={!canSave}
-          onPress={onSave}
-          style={({ pressed }) => [
-            styles.saveButton,
-            { backgroundColor: theme.tint, opacity: !canSave ? 0.4 : pressed ? 0.8 : 1 },
-          ]}>
-          <ThemedText style={styles.saveText}>Save</ThemedText>
-        </Pressable>
+        <Button label="Save" size="sm" disabled={!canSave} onPress={onSave} />
       </View>
 
       {loading ? (
         <View style={styles.centerState}>
-          <ActivityIndicator color={theme.textSecondary} />
+          <ActivityIndicator color={colors.textSecondary} />
         </View>
       ) : error || !detail || !nutrition || !unit ? (
         <View style={styles.centerState}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.errorText}>
+          <ThemedText type="sm" themeColor="textSecondary" style={styles.errorText}>
             {error ?? "Couldn't load nutrition details."}
           </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            onPress={reload}
-            style={({ pressed }) => [
-              styles.retry,
-              { borderColor: theme.tint },
-              pressed && styles.pressed,
-            ]}>
-            <ThemedText type="smallBold" themeColor="tint">
-              Try again
-            </ThemedText>
-          </Pressable>
+          <Button label="Try again" variant="secondary" size="sm" onPress={reload} />
         </View>
       ) : (
         <>
@@ -177,24 +150,18 @@ export function FoodDetailScreen({ fdcId, meal, mode, entryId }: Props) {
           <ThemedView
             style={[
               styles.footer,
-              { paddingBottom: insets.bottom + Spacing.two, borderTopColor: theme.backgroundSelected },
+              { paddingBottom: insets.bottom + Spacing.s8, borderTopColor: colors.border },
             ]}>
             <View style={styles.quantityCol}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-                QUANTITY
-              </ThemedText>
-              <TextInput
+              <Input
+                label="Quantity"
+                numeric
                 value={quantity}
                 onChangeText={setQuantityOverride}
                 keyboardType="decimal-pad"
                 selectTextOnFocus
                 placeholder="0"
-                placeholderTextColor={theme.textSecondary}
                 accessibilityLabel="Quantity"
-                style={[
-                  styles.quantityInput,
-                  { backgroundColor: theme.backgroundElement, color: theme.text },
-                ]}
               />
             </View>
             <View style={styles.unitCol}>
@@ -207,8 +174,6 @@ export function FoodDetailScreen({ fdcId, meal, mode, entryId }: Props) {
   );
 }
 
-const CIRCLE = 34;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -216,59 +181,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.two,
+    gap: Spacing.s16,
+    paddingHorizontal: Spacing.s24,
+    paddingBottom: Spacing.s8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  backButton: {
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    alignItems: "center",
-    justifyContent: "center",
   },
   title: {
     flex: 1,
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  saveButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-  },
-  saveText: {
-    color: "#ffffff",
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 15,
   },
   content: {
-    padding: Spacing.four,
+    padding: Spacing.s24,
   },
   centerState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.three,
-    padding: Spacing.four,
+    gap: Spacing.s16,
+    padding: Spacing.s24,
   },
   errorText: {
     textAlign: "center",
   },
-  retry: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    borderWidth: 1.5,
-  },
   footer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    gap: Spacing.s16,
+    paddingHorizontal: Spacing.s24,
+    paddingTop: Spacing.s16,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   quantityCol: {
@@ -276,21 +215,5 @@ const styles = StyleSheet.create({
   },
   unitCol: {
     flex: 1.3,
-  },
-  caps: {
-    letterSpacing: 1.2,
-    marginBottom: Spacing.one,
-  },
-  quantityInput: {
-    height: 52,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 14,
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    // Trim RN's default vertical padding so the value sits centered in the box.
-    paddingVertical: 0,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

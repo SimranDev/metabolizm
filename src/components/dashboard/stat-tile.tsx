@@ -5,39 +5,39 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar } from '@/components/dashboard/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Fonts, Spacing, type ThemeColor } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StatNumber } from '@/components/ui/stat-number';
+import { Spacing, useTheme, type ThemeColors } from '@/theme';
 
 type Props = {
   icon: SymbolViewProps['name'];
   label: string;
   value: string;
   sub?: string;
-  /** Icon (and progress fill) color. Defaults to the app tint. */
-  tint?: ThemeColor;
-  /** Optional mini progress toward a goal, 0–1. */
+  /** Icon color. Defaults to primary. */
+  tint?: keyof ThemeColors;
+  /** Optional mini progress toward a goal, 0–1 (accent fill). */
   progress?: number;
 };
 
 /** Small dashboard stat: icon + label header, big value, optional sub/progress. */
-export function StatTile({ icon, label, value, sub, tint = 'tint', progress }: Props) {
-  const theme = useTheme();
+export function StatTile({ icon, label, value, sub, tint = 'primary', progress }: Props) {
+  const { colors } = useTheme();
 
   return (
     <Card style={styles.tile}>
       <View style={styles.header}>
-        <SymbolView name={icon} size={16} tintColor={theme[tint]} fallback={<View />} />
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        <SymbolView name={icon} size={16} tintColor={colors[tint]} fallback={<View />} />
+        <ThemedText type="sm" themeColor="textSecondary" numberOfLines={1}>
           {label}
         </ThemedText>
       </View>
-      <ThemedText style={styles.value}>{value}</ThemedText>
+      <StatNumber value={value} size="sm" />
       {sub !== undefined && (
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        <ThemedText type="sm" themeColor="textSecondary" numberOfLines={1} tabular>
           {sub}
         </ThemedText>
       )}
-      {progress !== undefined && <ProgressBar fraction={progress} color={theme[tint]} height={6} />}
+      {progress !== undefined && <ProgressBar fraction={progress} height={6} />}
     </Card>
   );
 }
@@ -51,21 +51,16 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   tile: {
     flexBasis: '46%',
     flexGrow: 1,
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-  },
-  value: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 24,
-    lineHeight: 30,
+    gap: Spacing.s4,
   },
 });

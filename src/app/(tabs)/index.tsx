@@ -15,10 +15,10 @@ import { WeightCard } from '@/components/dashboard/weight-card';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Badge } from '@/components/ui/badge';
 import { ageFromDob, bmi, bmiCategory, maintenanceCalories } from '@/lib/health';
 import { useProfile } from '@/store/profile';
+import { BottomTabInset, Spacing } from '@/theme';
 
 /**
  * The daily overview. Everything below the fold is SAMPLE data (see
@@ -52,7 +52,7 @@ export default function DashboardScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.titleRow}>
-          <ThemedText type="title">Today</ThemedText>
+          <ThemedText type="h1">Today</ThemedText>
           <StreakPill days={SAMPLE.streakDays} />
         </View>
 
@@ -166,7 +166,7 @@ export default function DashboardScreen() {
 
         <InsightCard text={SAMPLE.insight} />
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
+        <ThemedText type="sm" themeColor="textSecondary" style={styles.note}>
           Sample data — logging and Apple Health / Health Connect sync are coming soon.
         </ThemedText>
       </ScrollView>
@@ -176,28 +176,29 @@ export default function DashboardScreen() {
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <ThemedText type="small" themeColor="textSecondary" style={styles.section}>
-      {children.toUpperCase()}
+    <ThemedText type="micro" themeColor="textSecondary" style={styles.section}>
+      {children}
     </ThemedText>
   );
 }
 
 function StreakPill({ days }: { days: number }) {
-  const theme = useTheme();
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={styles.streak}
-      accessible
-      accessibilityLabel={`${days}-day logging streak`}>
-      <SymbolView
-        name={{ ios: 'flame.fill', android: 'local_fire_department' }}
-        size={16}
-        tintColor={theme.carbs}
-        fallback={<View />}
+    <View accessible accessibilityLabel={`${days}-day logging streak`}>
+      {/* Streaks are an allowed accent role. */}
+      <Badge
+        variant="accent"
+        label={`${days}-day streak`}
+        icon={(color) => (
+          <SymbolView
+            name={{ ios: 'flame.fill', android: 'local_fire_department' }}
+            size={16}
+            tintColor={color}
+            fallback={<View />}
+          />
+        )}
       />
-      <ThemedText type="smallBold">{days}-day streak</ThemedText>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -206,27 +207,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.s24,
+    paddingBottom: BottomTabInset + Spacing.s24,
+    gap: Spacing.s16,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  streak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
-  },
   section: {
-    letterSpacing: 1.2,
-    marginTop: Spacing.two,
-    marginBottom: -Spacing.two,
+    marginTop: Spacing.s8,
+    marginBottom: -Spacing.s8,
   },
   note: {
     textAlign: 'center',

@@ -1,9 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { haptics } from '@/lib/haptics';
+import { Radius, Spacing, useTheme } from '@/theme';
 
 type Option<T extends string> = { label: string; value: T };
 
@@ -15,10 +14,10 @@ type Props<T extends string> = {
 
 /** Small segmented control, used for unit switches (kg/lb/st, cm/ft-in). */
 export function UnitToggle<T extends string>({ options, value, onChange }: Props<T>) {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+    <View style={[styles.track, { backgroundColor: colors.surfaceSunken }]}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -31,10 +30,11 @@ export function UnitToggle<T extends string>({ options, value, onChange }: Props
               haptics.select();
               onChange(option.value);
             }}
-            style={[styles.pill, selected && { backgroundColor: theme.tint }]}>
+            // Selected segment = accent (allowed active-state role).
+            style={[styles.segment, selected && { backgroundColor: colors.accent }]}>
             <ThemedText
-              type="smallBold"
-              style={selected ? styles.selectedLabel : { color: theme.textSecondary }}>
+              type="smBold"
+              style={{ color: selected ? colors.onAccent : colors.textSecondary }}>
               {option.label}
             </ThemedText>
           </Pressable>
@@ -47,17 +47,16 @@ export function UnitToggle<T extends string>({ options, value, onChange }: Props
 const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
-    padding: Spacing.half,
-    borderRadius: Spacing.two,
+    padding: 2,
+    borderRadius: Radius.md,
     alignSelf: 'center',
-    gap: Spacing.half,
+    gap: 2,
   },
-  pill: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.two - 1,
+  segment: {
+    paddingHorizontal: Spacing.s16,
+    paddingVertical: Spacing.s4,
+    borderRadius: Radius.sm,
     minWidth: 56,
     alignItems: 'center',
   },
-  selectedLabel: { color: '#ffffff' },
 });

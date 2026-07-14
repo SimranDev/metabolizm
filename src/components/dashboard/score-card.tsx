@@ -4,8 +4,8 @@ import { ProgressBar } from '@/components/dashboard/progress-bar';
 import type { ScoreFactor } from '@/components/dashboard/sample-data';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StatNumber } from '@/components/ui/stat-number';
+import { Spacing } from '@/theme';
 
 type Props = {
   total: number;
@@ -19,7 +19,6 @@ type Props = {
  * check in a glance, with the contributing factors broken out beside it.
  */
 export function ScoreCard({ total, delta, factors }: Props) {
-  const theme = useTheme();
   const deltaText = `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)} vs yesterday`;
 
   return (
@@ -27,34 +26,31 @@ export function ScoreCard({ total, delta, factors }: Props) {
       accessible
       accessibilityLabel={`Metabolic score ${total} of 100, ${delta >= 0 ? 'up' : 'down'} ${Math.abs(delta)} from yesterday`}>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          METABOLIC SCORE
+        <ThemedText type="micro" themeColor="textSecondary">
+          Metabolic score
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           {deltaText}
         </ThemedText>
       </View>
 
       <View style={styles.body}>
         <View style={styles.scoreBlock}>
-          <ThemedText style={styles.score}>
-            {total}
-            <ThemedText themeColor="textSecondary" style={styles.outOf}>
-              /100
-            </ThemedText>
-          </ThemedText>
+          <StatNumber value={total} suffix="/100" size="xl" />
         </View>
 
         <View style={styles.factors}>
           {factors.map((factor) => (
             <View key={factor.label} style={styles.factor}>
               <View style={styles.factorRow}>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="sm" themeColor="textSecondary">
                   {factor.label}
                 </ThemedText>
-                <ThemedText type="smallBold">{factor.value}</ThemedText>
+                <ThemedText type="smBold" tabular>
+                  {factor.value}
+                </ThemedText>
               </View>
-              <ProgressBar fraction={factor.value / 100} color={theme.tint} height={4} />
+              <ProgressBar fraction={factor.value / 100} height={4} />
             </View>
           ))}
         </View>
@@ -69,32 +65,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   body: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.four,
+    gap: Spacing.s24,
   },
   scoreBlock: {
     justifyContent: 'center',
   },
-  score: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 56,
-    lineHeight: 64,
-  },
-  outOf: {
-    fontFamily: Fonts.sans,
-    fontSize: 18,
-  },
   factors: {
     flex: 1,
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   factor: {
-    gap: Spacing.half,
+    gap: 2,
   },
   factorRow: {
     flexDirection: 'row',

@@ -2,9 +2,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StatNumber } from '@/components/ui/stat-number';
 import { KCAL_PER_KG } from '@/lib/health';
+import { Spacing, useTheme } from '@/theme';
 
 type Props = {
   /** Calories eaten so far today. */
@@ -22,7 +22,7 @@ type Props = {
  * deficit/surplus, with its body-fat equivalent for scale.
  */
 export function EnergyBalanceCard({ eaten, baselineBurn, activeBurn, targetCalories }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   const out = baselineBurn + activeBurn;
   const balance = eaten - out;
@@ -33,33 +33,30 @@ export function EnergyBalanceCard({ eaten, baselineBurn, activeBurn, targetCalor
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          ENERGY BALANCE
+        <ThemedText type="micro" themeColor="textSecondary">
+          Energy balance
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           goal {targetCalories.toLocaleString()} cal
         </ThemedText>
       </View>
 
       <View style={styles.heroRow}>
-        <ThemedText style={styles.hero}>
-          {deficit ? '−' : '+'}
-          {Math.round(Math.abs(balance)).toLocaleString()}
-        </ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.heroCaption}>
-          cal {deficit ? 'deficit' : 'surplus'} so far today
-        </ThemedText>
+        <StatNumber
+          value={`${deficit ? '−' : '+'}${Math.round(Math.abs(balance)).toLocaleString()}`}
+          suffix={` cal ${deficit ? 'deficit' : 'surplus'} so far today`}
+        />
       </View>
 
       <View
         style={styles.bars}
         accessible
         accessibilityLabel={`${Math.round(eaten)} calories in, ${Math.round(out)} calories out, a ${Math.round(Math.abs(balance))} calorie ${deficit ? 'deficit' : 'surplus'} so far today`}>
-        <BalanceBar label="In" value={eaten} scale={scale} color={theme.tint} />
-        <BalanceBar label="Out" value={out} scale={scale} color={theme.textSecondary} />
+        <BalanceBar label="In" value={eaten} scale={scale} color={colors.primary} />
+        <BalanceBar label="Out" value={out} scale={scale} color={colors.borderStrong} />
       </View>
 
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="sm" themeColor="textSecondary" tabular>
         Out = baseline burn so far + {activeBurn.toLocaleString()} active · ≈ {fatGrams} g of body
         fat
       </ThemedText>
@@ -78,18 +75,18 @@ function BalanceBar({
   scale: number;
   color: string;
 }) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   return (
     <View style={styles.barRow}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.barLabel}>
+      <ThemedText type="sm" themeColor="textSecondary" style={styles.barLabel}>
         {label}
       </ThemedText>
-      <View style={[styles.barTrack, { backgroundColor: theme.backgroundSelected }]}>
+      <View style={[styles.barTrack, { backgroundColor: colors.ringTrack }]}>
         <View
           style={[styles.barFill, { width: `${(value / scale) * 100}%`, backgroundColor: color }]}
         />
       </View>
-      <ThemedText type="smallBold" style={styles.barValue}>
+      <ThemedText type="smBold" style={styles.barValue} tabular>
         {Math.round(value).toLocaleString()}
       </ThemedText>
     </View>
@@ -104,29 +101,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: Spacing.two,
-  },
-  hero: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 40,
-    lineHeight: 46,
-  },
-  heroCaption: {
-    fontSize: 15,
+    gap: Spacing.s8,
   },
   bars: {
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   barLabel: {
     width: 28,

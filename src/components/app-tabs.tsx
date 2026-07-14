@@ -1,19 +1,20 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts, useTheme } from '@/theme';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const { colors } = useTheme();
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
+      backgroundColor={colors.surface}
+      // Active item is the single allowed accent use in the nav: a lime pill
+      // with `onAccent` icon + label, in both schemes.
+      indicatorColor={colors.accent}
+      iconColor={{ default: colors.textSecondary, selected: colors.onAccent }}
       labelStyle={{
-        default: { fontFamily: Fonts.sans },
-        selected: { color: colors.text, fontFamily: Fonts.sans },
+        default: { fontFamily: Fonts.sansMedium, color: colors.textSecondary },
+        selected: { color: colors.onAccent, fontFamily: Fonts.sansMedium },
       }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Dashboard</NativeTabs.Trigger.Label>

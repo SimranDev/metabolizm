@@ -4,17 +4,14 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar } from '@/components/dashboard/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { macroColor, Spacing, useTheme, type MacroKind } from '@/theme';
 import type { Macros } from '@/lib/health';
-
-type MacroColor = 'protein' | 'carbs' | 'fat';
 
 type Row = {
   key: keyof Macros;
   label: string;
   icon: SymbolViewProps['name'];
-  color: MacroColor;
+  macro: MacroKind;
 };
 
 /** Protein first — it's the anchor of every plan (see `macrosFor`). */
@@ -23,10 +20,10 @@ const ROWS: Row[] = [
     key: 'proteinG',
     label: 'Protein',
     icon: { ios: 'dumbbell.fill', android: 'fitness_center' },
-    color: 'protein',
+    macro: 'protein',
   },
-  { key: 'carbsG', label: 'Carbs', icon: { ios: 'leaf.fill', android: 'eco' }, color: 'carbs' },
-  { key: 'fatG', label: 'Fat', icon: { ios: 'drop.fill', android: 'water_drop' }, color: 'fat' },
+  { key: 'carbsG', label: 'Carbs', icon: { ios: 'leaf.fill', android: 'eco' }, macro: 'carbs' },
+  { key: 'fatG', label: 'Fat', icon: { ios: 'drop.fill', android: 'water_drop' }, macro: 'fat' },
 ];
 
 type Props = {
@@ -36,22 +33,23 @@ type Props = {
 
 /** Grams consumed vs the plan's macro targets, one labeled bar per macro. */
 export function MacrosCard({ consumed, targets }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          MACROS
+        <ThemedText type="micro" themeColor="textSecondary">
+          Macros
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary">
           vs plan targets
         </ThemedText>
       </View>
 
-      {ROWS.map(({ key, label, icon, color }) => {
+      {ROWS.map(({ key, label, icon, macro }) => {
         const eaten = consumed[key];
         const target = targets[key];
+        const fill = macroColor(colors, macro);
         return (
           <View
             key={key}
@@ -59,18 +57,18 @@ export function MacrosCard({ consumed, targets }: Props) {
             accessible
             accessibilityLabel={`${label}: ${Math.round(eaten)} of ${Math.round(target)} grams`}>
             <View style={styles.rowHeader}>
-              <SymbolView name={icon} size={15} tintColor={theme[color]} fallback={<View />} />
-              <ThemedText type="smallBold">{label}</ThemedText>
+              <SymbolView name={icon} size={15} tintColor={fill} fallback={<View />} />
+              <ThemedText type="smBold">{label}</ThemedText>
               <View style={styles.spacer} />
-              <ThemedText type="smallBold">
+              <ThemedText type="smBold" tabular>
                 {Math.round(eaten)}
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="sm" themeColor="textSecondary" tabular>
                   {' '}
                   / {Math.round(target)} g
                 </ThemedText>
               </ThemedText>
             </View>
-            <ProgressBar fraction={target > 0 ? eaten / target : 0} color={theme[color]} />
+            <ProgressBar fraction={target > 0 ? eaten / target : 0} color={fill} />
           </View>
         );
       })}
@@ -84,16 +82,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   row: {
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   rowHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   spacer: {
     flex: 1,

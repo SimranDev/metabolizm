@@ -3,9 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { haptics } from '@/lib/haptics';
+import { Radius, Spacing, useTheme } from '@/theme';
 
 type Props = {
   label: string;
@@ -18,7 +17,7 @@ type Props = {
 
 /** A selectable row used for goal / gender / activity / plan choices. */
 export function OptionCard({ label, description, selected, onPress, icon }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Pressable
@@ -30,22 +29,23 @@ export function OptionCard({ label, description, selected, onPress, icon }: Prop
       }}
       style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
-        type={selected ? 'backgroundSelected' : 'backgroundElement'}
-        style={[styles.card, { borderColor: selected ? theme.tint : 'transparent' }]}>
+        type="surfaceSunken"
+        // Selected = the 2px focus-ring treatment.
+        style={[styles.card, { borderColor: selected ? colors.focusRing : 'transparent' }]}>
         {icon ? (
           <SymbolView
             name={icon}
             size={24}
-            tintColor={selected ? theme.tint : theme.textSecondary}
+            tintColor={selected ? colors.primary : colors.textSecondary}
             fallback={<View style={styles.iconSpacer} />}
           />
         ) : null}
         <View style={styles.text}>
-          <ThemedText type="smallBold" style={styles.label}>
+          <ThemedText type="smBold" style={styles.label}>
             {label}
           </ThemedText>
           {description ? (
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="sm" themeColor="textSecondary">
               {description}
             </ThemedText>
           ) : null}
@@ -54,7 +54,7 @@ export function OptionCard({ label, description, selected, onPress, icon }: Prop
           <SymbolView
             name={{ ios: 'checkmark.circle.fill', android: 'check_circle' }}
             size={22}
-            tintColor={theme.tint}
+            tintColor={colors.primary}
             fallback={<View />}
           />
         ) : null}
@@ -67,13 +67,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
+    gap: Spacing.s16,
+    padding: Spacing.s16,
+    borderRadius: Radius.lg,
     borderWidth: 2,
   },
   iconSpacer: { width: 24, height: 24 },
-  text: { flex: 1, gap: Spacing.half },
-  label: { fontSize: 16 },
+  text: { flex: 1, gap: 2 },
+  label: { fontSize: 15 },
   pressed: { opacity: 0.7 },
 });

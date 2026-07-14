@@ -2,8 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Spacing, useTheme } from '@/theme';
 
 const CHART_HEIGHT = 72;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -19,7 +18,7 @@ type Props = {
  * target turn red. Today is the last column with an emphasized label.
  */
 export function WeekStrip({ calories, target }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const scale = Math.max(...calories, target) * 1.08;
   const today = new Date();
 
@@ -35,10 +34,10 @@ export function WeekStrip({ calories, target }: Props) {
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          LAST 7 DAYS
+        <ThemedText type="micro" themeColor="textSecondary">
+          Last 7 days
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           target {target.toLocaleString()} cal
         </ThemedText>
       </View>
@@ -52,7 +51,7 @@ export function WeekStrip({ calories, target }: Props) {
               styles.targetLine,
               {
                 bottom: (target / scale) * CHART_HEIGHT,
-                backgroundColor: theme.textSecondary,
+                backgroundColor: colors.textSecondary,
               },
             ]}
           />
@@ -63,7 +62,7 @@ export function WeekStrip({ calories, target }: Props) {
                   styles.bar,
                   {
                     height: Math.max((day.cal / scale) * CHART_HEIGHT, 3),
-                    backgroundColor: day.cal > target ? theme.danger : theme.tint,
+                    backgroundColor: day.cal > target ? colors.danger : colors.primary,
                   },
                 ]}
               />
@@ -76,7 +75,7 @@ export function WeekStrip({ calories, target }: Props) {
             return (
               <ThemedText
                 key={i}
-                type={isToday ? 'smallBold' : 'small'}
+                type={isToday ? 'smBold' : 'sm'}
                 themeColor={isToday ? 'text' : 'textSecondary'}
                 style={styles.dayLabel}>
                 {day.letter}
@@ -94,9 +93,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-  },
-  caps: {
-    letterSpacing: 1.2,
   },
   chart: {
     height: CHART_HEIGHT,
@@ -122,7 +118,7 @@ const styles = StyleSheet.create({
   },
   labels: {
     flexDirection: 'row',
-    marginTop: Spacing.one,
+    marginTop: Spacing.s4,
   },
   dayLabel: {
     flex: 1,

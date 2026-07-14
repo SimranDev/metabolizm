@@ -1,22 +1,31 @@
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { StyleSheet, type ViewProps } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Elevation, Radius, Spacing, useTheme } from '@/theme';
 
-/** Liquid glass on iOS 26+, flat themed card everywhere else. */
+/** Flat Kinetic card: surface, hairline border, subtle shadow. */
 export function Card({ style, ...rest }: ViewProps) {
-  if (isLiquidGlassAvailable()) {
-    return <GlassView style={[styles.card, style]} {...rest} />;
-  }
-  return <ThemedView type="backgroundElement" style={[styles.card, style]} {...rest} />;
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.card,
+        Elevation.card,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    padding: Spacing.three,
-    gap: Spacing.two,
-    overflow: 'hidden',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.s16,
+    gap: Spacing.s8,
+    // No overflow:'hidden' — it would clip the iOS card shadow. Children that
+    // need rounded clipping (bars, sparklines) clip themselves.
   },
 });

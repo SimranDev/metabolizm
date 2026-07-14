@@ -4,10 +4,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
-import { Fonts, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
 import type { FoodUnit } from "@/lib/food";
 import { haptics } from "@/lib/haptics";
+import { Fonts, Radius, Spacing, useTheme } from "@/theme";
 
 type Props = {
   units: FoodUnit[];
@@ -21,7 +20,7 @@ type Props = {
  * `Modal` (no extra dependency) to keep app size down.
  */
 export function UnitPicker({ units, value, onChange }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
 
@@ -33,8 +32,8 @@ export function UnitPicker({ units, value, onChange }: Props) {
 
   return (
     <>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-        UNIT
+      <ThemedText type="micro" themeColor="textTertiary" style={styles.label}>
+        Unit
       </ThemedText>
       <Pressable
         accessibilityRole="button"
@@ -42,26 +41,26 @@ export function UnitPicker({ units, value, onChange }: Props) {
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.field,
-          { backgroundColor: theme.backgroundElement },
+          { backgroundColor: colors.surfaceSunken },
           pressed && styles.pressed,
         ]}>
         <ThemedText style={styles.value} numberOfLines={1}>
           {value.label}
         </ThemedText>
-        <FontAwesomeFreeSolid name="chevron-down" size={14} color={theme.textSecondary} />
+        <FontAwesomeFreeSolid name="chevron-down" size={14} color={colors.textSecondary} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: colors.scrim }]} onPress={() => setOpen(false)}>
           <Pressable
             style={[
               styles.sheet,
-              { backgroundColor: theme.background, paddingBottom: insets.bottom + Spacing.three },
+              { backgroundColor: colors.surface, paddingBottom: insets.bottom + Spacing.s16 },
             ]}
             onPress={() => {}}>
-            <View style={[styles.handle, { backgroundColor: theme.backgroundSelected }]} />
-            <ThemedText type="small" themeColor="textSecondary" style={styles.sheetTitle}>
-              SELECT UNIT
+            <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
+            <ThemedText type="micro" themeColor="textSecondary" style={styles.sheetTitle}>
+              Select unit
             </ThemedText>
             <ScrollView style={styles.list} bounces={false}>
               {units.map((unit, index) => {
@@ -73,8 +72,8 @@ export function UnitPicker({ units, value, onChange }: Props) {
                     accessibilityState={{ selected }}
                     onPress={() => select(unit)}
                     style={({ pressed }) => [styles.option, pressed && styles.pressed]}>
-                    <ThemedText themeColor={selected ? "tint" : "text"}>{unit.label}</ThemedText>
-                    {selected && <FontAwesomeFreeSolid name="check" size={16} color={theme.tint} />}
+                    <ThemedText themeColor={selected ? "primary" : "text"}>{unit.label}</ThemedText>
+                    {selected && <FontAwesomeFreeSolid name="check" size={16} color={colors.primary} />}
                   </Pressable>
                 );
               })}
@@ -87,46 +86,43 @@ export function UnitPicker({ units, value, onChange }: Props) {
 }
 
 const styles = StyleSheet.create({
-  caps: {
-    letterSpacing: 1.2,
-    marginBottom: Spacing.one,
+  label: {
+    marginBottom: Spacing.s8,
   },
   field: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: Spacing.two,
-    height: 52,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 14,
+    gap: Spacing.s8,
+    height: 48,
+    paddingHorizontal: Spacing.s16,
+    borderRadius: Radius.md,
   },
   value: {
     flex: 1,
     fontFamily: Fonts.sansSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
   backdrop: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.4)",
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    borderTopLeftRadius: Radius.lg,
+    borderTopRightRadius: Radius.lg,
+    paddingHorizontal: Spacing.s24,
+    paddingTop: Spacing.s8,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.s16,
   },
   sheetTitle: {
-    letterSpacing: 1.2,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.s8,
   },
   list: {
     maxHeight: 320,
@@ -135,7 +131,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.s16,
   },
   pressed: {
     opacity: 0.6,

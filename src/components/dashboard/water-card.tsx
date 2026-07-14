@@ -4,9 +4,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { haptics } from '@/lib/haptics';
+import { Spacing, useTheme } from '@/theme';
 
 type Props = {
   initialGlasses: number;
@@ -22,7 +21,7 @@ const formatLiters = (ml: number) =>
  * filled drop to undo it). Local state only — a taste of the eventual logger.
  */
 export function WaterCard({ initialGlasses, goalGlasses, mlPerGlass }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   const [glasses, setGlasses] = useState(Math.min(initialGlasses, goalGlasses));
 
   const onPressGlass = (index: number) => {
@@ -33,10 +32,10 @@ export function WaterCard({ initialGlasses, goalGlasses, mlPerGlass }: Props) {
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          WATER
+        <ThemedText type="micro" themeColor="textSecondary">
+          Water
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           {formatLiters(glasses * mlPerGlass)} of {formatLiters(goalGlasses * mlPerGlass)}
         </ThemedText>
       </View>
@@ -48,7 +47,7 @@ export function WaterCard({ initialGlasses, goalGlasses, mlPerGlass }: Props) {
             <Pressable
               key={i}
               onPress={() => onPressGlass(i)}
-              hitSlop={Spacing.one}
+              hitSlop={Spacing.s4}
               accessibilityRole="button"
               accessibilityLabel={`Glass ${i + 1} of ${goalGlasses}`}
               accessibilityState={{ selected: filled }}
@@ -56,7 +55,8 @@ export function WaterCard({ initialGlasses, goalGlasses, mlPerGlass }: Props) {
               <SymbolView
                 name={{ ios: 'drop.fill', android: 'water_drop' }}
                 size={26}
-                tintColor={filled ? theme.tint : theme.backgroundSelected}
+                // Filled drops are progress indication — an allowed accent role.
+                tintColor={filled ? colors.accent : colors.ringTrack}
                 fallback={<View />}
               />
             </Pressable>
@@ -64,7 +64,7 @@ export function WaterCard({ initialGlasses, goalGlasses, mlPerGlass }: Props) {
         })}
       </View>
 
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="sm" themeColor="textSecondary" tabular>
         Tap a drop — {glasses} of {goalGlasses} glasses ({mlPerGlass} ml each)
       </ThemedText>
     </Card>
@@ -77,13 +77,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   drops: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.s4,
   },
   drop: {
     alignItems: 'center',

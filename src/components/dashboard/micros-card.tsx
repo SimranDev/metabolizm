@@ -3,9 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar } from '@/components/dashboard/progress-bar';
 import type { MicroSample } from '@/components/dashboard/sample-data';
 import { ThemedText } from '@/components/themed-text';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Spacing, useTheme } from '@/theme';
 
 type Props = {
   micros: readonly MicroSample[];
@@ -13,19 +13,19 @@ type Props = {
 
 /**
  * Micronutrient watch — the "micro" half of the app's core tracking. Two row
- * kinds: `goal` rows fill toward a target (tint), `limit` rows track headroom
- * under a cap (neutral, turning red once ~90% of the cap is gone).
+ * kinds: `goal` rows fill toward a target, `limit` rows track headroom under a
+ * cap (neutral, turning red once ~90% of the cap is gone).
  */
 export function MicrosCard({ micros }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          MICRONUTRIENTS
+        <ThemedText type="micro" themeColor="textSecondary">
+          Micronutrients
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="sm" themeColor="textSecondary">
           vs daily targets
         </ThemedText>
       </View>
@@ -35,9 +35,9 @@ export function MicrosCard({ micros }: Props) {
         const isLimit = micro.kind === 'limit';
         const fill = isLimit
           ? fraction >= 0.9
-            ? theme.danger
-            : theme.textSecondary
-          : theme.tint;
+            ? colors.danger
+            : colors.borderStrong
+          : colors.primary;
         return (
           <View
             key={micro.label}
@@ -45,18 +45,12 @@ export function MicrosCard({ micros }: Props) {
             accessible
             accessibilityLabel={`${micro.label}: ${micro.consumed} of ${micro.target} ${micro.unit} ${isLimit ? 'limit' : 'goal'}`}>
             <View style={styles.rowHeader}>
-              <ThemedText type="smallBold">{micro.label}</ThemedText>
-              {isLimit && (
-                <View style={[styles.tag, { backgroundColor: theme.backgroundSelected }]}>
-                  <ThemedText themeColor="textSecondary" style={styles.tagText}>
-                    LIMIT
-                  </ThemedText>
-                </View>
-              )}
+              <ThemedText type="smBold">{micro.label}</ThemedText>
+              {isLimit && <Badge label="Limit" size="sm" />}
               <View style={styles.spacer} />
-              <ThemedText type="small">
+              <ThemedText type="sm" tabular>
                 {micro.consumed.toLocaleString()}
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="sm" themeColor="textSecondary" tabular>
                   {' '}
                   / {micro.target.toLocaleString()} {micro.unit}
                 </ThemedText>
@@ -76,28 +70,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   row: {
-    gap: Spacing.one,
+    gap: Spacing.s4,
   },
   rowHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.s8,
   },
   spacer: {
     flex: 1,
-  },
-  tag: {
-    borderRadius: 4,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-  },
-  tagText: {
-    fontSize: 10,
-    lineHeight: 14,
-    letterSpacing: 0.8,
   },
 });

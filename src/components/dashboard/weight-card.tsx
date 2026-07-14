@@ -6,9 +6,9 @@ import { sampleWeightSeriesKg } from '@/components/dashboard/sample-data';
 import { Sparkline } from '@/components/dashboard/sparkline';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
-import { Fonts, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StatNumber } from '@/components/ui/stat-number';
 import { fromKg, kgToLb, kgToStLb, type WeightUnit } from '@/lib/health';
+import { Spacing, useTheme } from '@/theme';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Sample journey: the user started this far from today's weight. */
@@ -38,7 +38,7 @@ type Props = {
  * from the current weekly rate.
  */
 export function WeightCard({ weightKg, goalWeightKg, weightUnit }: Props) {
-  const theme = useTheme();
+  const { colors } = useTheme();
   // Captured once per mount — render-stable, and satisfies react-hooks/purity.
   const [now] = useState(() => Date.now());
 
@@ -74,40 +74,40 @@ export function WeightCard({ weightKg, goalWeightKg, weightUnit }: Props) {
   return (
     <Card>
       <View style={styles.header}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.caps}>
-          WEIGHT
+        <ThemedText type="micro" themeColor="textSecondary">
+          Weight
         </ThemedText>
         {hasGoal && (
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="sm" themeColor="textSecondary" tabular>
             goal {formatWeight(goalWeightKg, weightUnit)}
           </ThemedText>
         )}
       </View>
 
       <View style={styles.heroRow}>
-        <ThemedText style={styles.hero}>{formatWeight(weightKg, weightUnit)}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <StatNumber value={formatWeight(weightKg, weightUnit)} size="sm" />
+        <ThemedText type="sm" themeColor="textSecondary" tabular>
           {falling ? '▼' : '▲'} {formatDelta(weekDeltaKg, weightUnit)} this week
         </ThemedText>
       </View>
 
       <Sparkline
         data={series}
-        color={theme.tint}
+        color={colors.primary}
         accessibilityLabel={`Weight over the last 14 days, from ${formatWeight(series[0], weightUnit)} to ${formatWeight(weightKg, weightUnit)}`}
       />
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="sm" themeColor="textSecondary">
         14-day trend
       </ThemedText>
 
       {hasGoal && (
         <View style={styles.journey}>
-          <ProgressBar fraction={journeyFraction} color={theme.tint} />
+          <ProgressBar fraction={journeyFraction} />
           <View style={styles.journeyLabels}>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="sm" themeColor="textSecondary" tabular>
               started {formatWeight(startKg, weightUnit)}
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="sm" themeColor="textSecondary" tabular>
               {Math.round(journeyFraction * 100)}% there
               {projectedDate ? ` · on pace for ${projectedDate}` : ''}
             </ThemedText>
@@ -124,22 +124,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  caps: {
-    letterSpacing: 1.2,
-  },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: Spacing.two,
-  },
-  hero: {
-    fontFamily: Fonts.sansSemiBold,
-    fontSize: 32,
-    lineHeight: 38,
+    gap: Spacing.s8,
   },
   journey: {
-    gap: Spacing.one,
-    marginTop: Spacing.one,
+    gap: Spacing.s4,
+    marginTop: Spacing.s4,
   },
   journeyLabels: {
     flexDirection: 'row',

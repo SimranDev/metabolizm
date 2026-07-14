@@ -13,6 +13,9 @@ export const G_PER_FL_OZ = 29.5735;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const trimNum = (n: number) => (Number.isInteger(n) ? String(n) : String(round1(n)));
 
+/** Compact amount formatter: whole numbers plain, otherwise one decimal. */
+export const formatGrams = (n: number) => (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1));
+
 /** Base units offered for every food, chosen by whether it's a solid or a liquid. */
 const BASE_UNITS: Record<"solid" | "liquid", FoodUnit[]> = {
   solid: [
