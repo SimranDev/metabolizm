@@ -4,7 +4,7 @@
  * applied in `plans.ts` before any target is shown to a user.
  */
 
-import type { ActivityLevel, Goal, Macros, Metrics, Sex } from './types';
+import type { ActivityLevel, Goal, Macros, Metrics, Sex } from '@metabolizm/shared';
 
 /** Approximate energy in one kilogram of body mass. */
 export const KCAL_PER_KG = 7700;

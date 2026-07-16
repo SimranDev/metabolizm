@@ -14,34 +14,16 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { FoodAccent, FoodSearchItem, FoodUnit } from "@/lib/food";
-import type { Macros } from "@/lib/health";
+import type {
+  DiaryEntry,
+  EntryPatch,
+  FoodSearchItem,
+  Macros,
+  Meal,
+  MealId,
+} from "@metabolizm/shared";
 
 import { zustandMmkvStorage } from "./storage";
-
-export type MealId = "breakfast" | "lunch" | "dinner" | "snack";
-
-/** A single logged food. `entryId` is unique per instance (a food can be logged twice). */
-export type DiaryEntry = {
-  entryId: string;
-  name: string;
-  serving: string;
-  calories: number;
-  macros: Macros;
-  accent: FoodAccent;
-  verified: boolean;
-  /** USDA food id, so the entry can be reopened/edited on the nutrition screen. */
-  fdcId?: string;
-  /** Amount + unit chosen on the nutrition screen (absent for quick-added foods). */
-  quantity?: number;
-  unit?: FoodUnit;
-};
-
-export type Meal = {
-  id: MealId;
-  label: string;
-  entries: DiaryEntry[];
-};
 
 /** Meal identity + display order for the Log tab. */
 const MEALS: { id: MealId; label: string }[] = [
@@ -98,9 +80,6 @@ type PersistedDiary = {
   entriesByDate: Record<string, EntriesByMeal>;
   recentFoods: FoodSearchItem[];
 };
-
-/** Fields the nutrition screen recomputes when a logged food's amount is edited. */
-export type EntryPatch = Pick<DiaryEntry, "serving" | "calories" | "macros" | "quantity" | "unit">;
 
 type DiaryState = PersistedDiary & {
   currentDate: string;

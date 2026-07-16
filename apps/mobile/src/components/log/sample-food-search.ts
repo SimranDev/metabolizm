@@ -5,7 +5,7 @@
  */
 
 // Re-exported so the food-search UI can keep importing the result type from here.
-export type { FoodAccent, FoodSearchItem } from "@/lib/food";
+export type { FoodAccent, FoodSearchItem } from "@metabolizm/shared";
 
 /** Filters above the results list. Only "All"/"History" show recents for now. */
 export const FOOD_FILTERS = [

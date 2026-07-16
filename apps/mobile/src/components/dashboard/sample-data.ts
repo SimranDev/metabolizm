@@ -6,7 +6,7 @@
  * `Math.random`) so the screen is stable across re-renders and reloads.
  */
 
-import type { Macros } from '@/lib/health';
+import type { Macros } from '@metabolizm/shared';
 
 export type MicroSample = {
   label: string;

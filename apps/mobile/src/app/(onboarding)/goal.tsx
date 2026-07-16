@@ -3,7 +3,7 @@ import { type SymbolViewProps } from 'expo-symbols';
 
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
 import { OptionCard } from '@/components/onboarding/option-card';
-import type { Goal } from '@/lib/health';
+import type { Goal } from '@metabolizm/shared';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';
 

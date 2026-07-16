@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { StatNumber } from "@/components/ui/stat-number";
-import type { Nutrition } from "@/lib/food";
+import type { Nutrition } from "@metabolizm/shared";
 import { formatGrams } from "@/lib/food/units";
 import { Radius, Spacing, useTheme } from "@/theme";
 

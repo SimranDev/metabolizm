@@ -3,7 +3,7 @@
  * convert to and from the units a user enters (kg / lb / stone, cm / ft-in).
  */
 
-import type { WeightUnit } from './types';
+import type { WeightUnit } from '@metabolizm/shared';
 
 export const KG_PER_LB = 0.45359237;
 export const LB_PER_STONE = 14;

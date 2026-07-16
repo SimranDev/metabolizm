@@ -14,7 +14,7 @@ import { toMealId, useDiary } from "@/store/diary";
 import { useFoodSelection } from "@/store/food-selection";
 import { macroColor, Radius, Spacing, useTheme } from "@/theme";
 
-import type { FoodSearchItem } from "@/lib/food";
+import type { FoodSearchItem } from "@metabolizm/shared";
 
 import {
   FOOD_FILTERS,

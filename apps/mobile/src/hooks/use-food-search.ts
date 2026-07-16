@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { searchFoods, type FoodSearchItem } from "@/lib/food";
+import { searchFoods } from "@/lib/food";
+import type { FoodSearchItem } from "@metabolizm/shared";
 
 const DEBOUNCE_MS = 350;
 

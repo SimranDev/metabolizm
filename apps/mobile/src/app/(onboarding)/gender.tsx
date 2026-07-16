@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
 import { OptionCard } from '@/components/onboarding/option-card';
-import type { Sex } from '@/lib/health';
+import type { Sex } from '@metabolizm/shared';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';
 

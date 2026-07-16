@@ -11,7 +11,7 @@ import {
   maintenanceCalories,
   safeWeeklyRateKg,
 } from './calc';
-import type { Goal, Metrics, Plan, PlanId } from './types';
+import type { Goal, Metrics, Plan, PlanId } from '@metabolizm/shared';
 
 /** Daily kcal delta that produces a given weekly weight change. */
 const dailyDeltaForRate = (weeklyRateKg: number) => (weeklyRateKg * KCAL_PER_KG) / 7;

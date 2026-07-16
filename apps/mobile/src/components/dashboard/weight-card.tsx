@@ -7,7 +7,8 @@ import { Sparkline } from '@/components/dashboard/sparkline';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { StatNumber } from '@/components/ui/stat-number';
-import { fromKg, kgToLb, kgToStLb, type WeightUnit } from '@/lib/health';
+import { fromKg, kgToLb, kgToStLb } from '@/lib/health';
+import type { WeightUnit } from '@metabolizm/shared';
 import { Spacing, useTheme } from '@/theme';
 
 const DAY_MS = 24 * 60 * 60 * 1000;

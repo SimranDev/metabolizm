@@ -9,8 +9,8 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
-import type { FoodAccent } from "@/lib/food";
-import { mealCalories, type DiaryEntry, type Meal, type MealId } from "@/store/diary";
+import { mealCalories } from "@/store/diary";
+import type { DiaryEntry, FoodAccent, Meal, MealId } from "@metabolizm/shared";
 import { macroColor, Radius, Spacing, useTheme } from "@/theme";
 
 const FOOD_TILE = 40;

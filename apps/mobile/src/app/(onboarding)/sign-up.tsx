@@ -10,7 +10,8 @@ import { signUp } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
 import { buildMetrics, resolveSelectedPlan } from '@/lib/onboarding-metrics';
 import { useOnboarding } from '@/store/onboarding';
-import { type Profile, useProfile } from '@/store/profile';
+import { useProfile } from '@/store/profile';
+import type { Profile } from '@metabolizm/shared';
 
 export default function SignUpScreen() {
   const router = useRouter();

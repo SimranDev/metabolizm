@@ -4,7 +4,7 @@
  * and `scaleNutrition` rescales the whole label to that amount.
  */
 
-import type { FoodUnit, Nutrition, UsdaFoodPortion } from "./types";
+import type { FoodUnit, Nutrition, UsdaFoodPortion } from "@metabolizm/shared";
 
 /** Grams per ounce (mass) and per fluid ounce (volume; density approximated 1 g/ml). */
 export const G_PER_OZ = 28.3495;

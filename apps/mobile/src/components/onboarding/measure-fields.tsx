@@ -3,16 +3,8 @@ import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, Type, useTheme } from '@/theme';
-import {
-  cmToFtIn,
-  ftInToCm,
-  fromKg,
-  type HeightUnit,
-  kgToStLb,
-  stLbToKg,
-  toKg,
-  type WeightUnit,
-} from '@/lib/health';
+import { cmToFtIn, ftInToCm, fromKg, kgToStLb, stLbToKg, toKg } from '@/lib/health';
+import type { HeightUnit, WeightUnit } from '@metabolizm/shared';
 
 import { UnitToggle } from './unit-toggle';
 

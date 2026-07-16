@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import { useReduceMotion } from '@/hooks/use-reduce-motion';
 import { Motion, useTheme } from '@/theme';
-import type { Macros } from '@/lib/health';
+import type { Macros } from '@metabolizm/shared';
 
 const KCAL_PER_G = { carbsG: 4, fatG: 9, proteinG: 4 } as const;
 

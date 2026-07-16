@@ -14,7 +14,7 @@ import type {
   PlanId,
   Sex,
   WeightUnit,
-} from '@/lib/health';
+} from '@metabolizm/shared';
 
 export type OnboardingAnswers = {
   goal?: Goal;

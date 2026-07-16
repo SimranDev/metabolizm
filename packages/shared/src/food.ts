@@ -4,7 +4,7 @@
  * the normalized result the Log UI renders.
  */
 
-import type { Macros } from "@/lib/health";
+import type { Macros } from "./health";
 
 /** Dominant-macro accent, mapped to the theme's macro colors for the row dot. */
 export type FoodAccent = "protein" | "carbs" | "fat";

@@ -8,33 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type {
-  ActivityLevel,
-  Goal,
-  HeightUnit,
-  Macros,
-  PlanId,
-  Sex,
-  WeightUnit,
-} from '@/lib/health';
-
-export type Profile = {
-  goal: Goal;
-  sex: Sex;
-  /** ISO date string. */
-  dob: string;
-  heightCm: number;
-  weightKg: number;
-  goalWeightKg?: number;
-  activityLevel: ActivityLevel;
-  weightUnit: WeightUnit;
-  heightUnit: HeightUnit;
-  email: string;
-  // Snapshot of the chosen plan at completion.
-  planId: PlanId;
-  targetCalories: number;
-  macros: Macros;
-};
+import type { Profile } from '@metabolizm/shared';
 
 type ProfileState = {
   hydrated: boolean;

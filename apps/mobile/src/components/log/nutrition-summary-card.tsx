@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { MacroBar } from "@/components/ui/macro-bar";
 import { StatNumber } from "@/components/ui/stat-number";
 import { formatGrams } from "@/lib/food/units";
-import type { Macros } from "@/lib/health";
+import type { Macros } from "@metabolizm/shared";
 import { macroTextColor, Spacing, useTheme, type MacroKind } from "@/theme";
 import { FontAwesomeFreeSolid, type FontAwesomeFreeSolidIconName } from "@react-native-vector-icons/fontawesome-free-solid";
 

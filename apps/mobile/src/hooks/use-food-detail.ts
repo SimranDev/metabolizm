@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getFoodDetail, type FoodDetail } from "@/lib/food";
+import { getFoodDetail } from "@/lib/food";
+import type { FoodDetail } from "@metabolizm/shared";
 
 export type FoodDetailState = {
   detail: FoodDetail | null;

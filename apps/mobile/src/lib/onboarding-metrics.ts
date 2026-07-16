@@ -3,14 +3,8 @@
  * raw onboarding answers. Returns `null` until every required field is present.
  */
 
-import {
-  ageFromDob,
-  buildCustomPlan,
-  buildPlans,
-  defaultPlanId,
-  type Metrics,
-  type Plan,
-} from '@/lib/health';
+import { ageFromDob, buildCustomPlan, buildPlans, defaultPlanId } from '@/lib/health';
+import type { Metrics, Plan } from '@metabolizm/shared';
 import type { OnboardingAnswers } from '@/store/onboarding';
 
 export function buildMetrics(a: OnboardingAnswers): Metrics | null {

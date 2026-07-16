@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
-import type { FoodUnit } from "@/lib/food";
+import type { FoodUnit } from "@metabolizm/shared";
 import { haptics } from "@/lib/haptics";
 import { Fonts, Radius, Spacing, useTheme } from "@/theme";
 

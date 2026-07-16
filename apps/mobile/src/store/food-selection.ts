@@ -8,7 +8,7 @@
 
 import { create } from "zustand";
 
-import type { FoodSearchItem } from "@/lib/food";
+import type { FoodSearchItem } from "@metabolizm/shared";
 
 type FoodSelectionState = {
   items: Record<string, FoodSearchItem>;

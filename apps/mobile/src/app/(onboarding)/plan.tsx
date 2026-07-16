@@ -14,9 +14,8 @@ import {
   CALORIE_FLOOR,
   defaultPlanId,
   maintenanceCalories,
-  type Plan,
-  type PlanId,
 } from '@/lib/health';
+import type { Plan, PlanId } from '@metabolizm/shared';
 import { buildMetrics } from '@/lib/onboarding-metrics';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';

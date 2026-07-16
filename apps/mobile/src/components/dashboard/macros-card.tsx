@@ -5,7 +5,7 @@ import { ProgressBar } from '@/components/dashboard/progress-bar';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { macroColor, Spacing, useTheme, type MacroKind } from '@/theme';
-import type { Macros } from '@/lib/health';
+import type { Macros } from '@metabolizm/shared';
 
 type Row = {
   key: keyof Macros;

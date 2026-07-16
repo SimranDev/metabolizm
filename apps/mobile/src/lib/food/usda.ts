@@ -17,7 +17,7 @@ import type {
   UsdaFood,
   UsdaFoodDetail,
   UsdaSearchResponse,
-} from "./types";
+} from "@metabolizm/shared";
 
 const API_KEY = process.env.EXPO_PUBLIC_USDA_API_KEY;
 const SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
