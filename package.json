@@ -1,0 +1,13 @@
+{
+  "name": "metabolizm",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.21.0",
+  "scripts": {
+    "start": "pnpm --filter mobile start",
+    "ios": "pnpm --filter mobile ios",
+    "android": "pnpm --filter mobile android",
+    "lint": "pnpm --filter mobile lint",
+    "typecheck": "pnpm -r exec tsc --noEmit"
+  }
+}
