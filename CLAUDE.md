@@ -23,7 +23,8 @@ Intended stack for feature work:
 pnpm monorepo (workspaces: `apps/*`, `packages/*`; single lockfile at root, default isolated linking):
 
 - [apps/mobile/](apps/mobile/) — the Expo SDK 57 app (React Native 0.86, React 19.2, expo-router v57), package name `mobile`, targeting **iOS and Android only — there is no web version**. Some `*.web.tsx` split files remain from the Expo starter but are not a shipping target. TypeScript strict mode.
-- [packages/shared/](packages/shared/) — `@metabolizm/shared`: pure data shapes shared with the future backend (food/USDA, health, diary, profile types), consumed as TypeScript source (`main`/`types` → `src/index.ts`, no build step — Metro transpiles workspace packages). zod is a dependency, reserved for upcoming schemas. **Rule:** pure types → `packages/shared`; runtime helpers (calc, unit conversions, USDA fetch/parse) → `apps/mobile/src/lib`. Never add `react`/`react-native` to its dependencies.
+- [apps/api/](apps/api/) — the backend, package name `api`: NestJS 11 + Fastify 5 (tsc builder — **do not add `incremental` to its tsconfig**: `nest build` with TS 6 + incremental silently emits nothing, nest-cli#3312), global prefix `/v1`, fail-fast env validation via `@nestjs/config` + zod ([src/config/env.ts](apps/api/src/config/env.ts)). Drizzle ORM + postgres-js behind a global DI module ([src/db/db.module.ts](apps/api/src/db/db.module.ts), inject with the `DB` token); schema in [src/db/schema.ts](apps/api/src/db/schema.ts), committed migrations in `apps/api/drizzle/`. Domain modules auth/catalog/diary/sync/billing are empty skeletons. No Prettier, no test runner (repo-wide conventions).
+- [packages/shared/](packages/shared/) — `@metabolizm/shared`: pure data shapes + API contract types shared between app and backend (food/USDA, health, diary, profile, api). Dual-consumed via conditional exports — **`react-native` condition (must stay first; conditions match in key order) → `src/index.ts`** so Metro and the mobile tsc use live TS source with no build step, while `types`/`default` → `dist/` (CJS + d.ts, built by `tsc`; the `prepare` script rebuilds it on every `pnpm install`) for Node/api. After editing shared, rebuild for the api with `pnpm --filter @metabolizm/shared build` (the `pnpm api` script does this on start). **Rule:** pure types → `packages/shared`; runtime helpers (calc, unit conversions, USDA fetch/parse) → `apps/mobile/src/lib`. Never add `react`/`react-native` to its dependencies.
 
 Metro is auto-configured for the workspace by `expo/metro-config` — there is deliberately **no metro.config.js**; don't add one.
 
@@ -31,12 +32,15 @@ Expo APIs changed significantly in SDK 57 — consult https://docs.expo.dev/vers
 
 ## Commands
 
-Run from the repo root (proxy scripts into `apps/mobile`):
+Run from the repo root (proxy scripts into the workspace packages):
 
 - `pnpm ios` / `pnpm android` — build & run a dev build (`expo run:*`). Native modules (native tabs, `expo-symbols`) require a dev build, not Expo Go.
 - `pnpm start` — start the Metro dev server (press `i`/`a` to open iOS/Android)
-- `pnpm lint` — ESLint via `expo lint`
-- `pnpm typecheck` — `tsc --noEmit` in every workspace package
+- `pnpm api` — rebuild shared, then run the backend in watch mode (`nest start --watch`); needs `apps/api/.env` (copy from [.env.example](apps/api/.env.example)) and the dev database: `docker compose up -d`
+- `pnpm api:build` — build shared + api topologically; `docker build -t metabolizm-api .` builds the production image
+- `pnpm db:generate` / `pnpm db:migrate` / `pnpm db:studio` — drizzle-kit against `apps/api` (migrate/studio read `DATABASE_URL` from `apps/api/.env`)
+- `pnpm lint` — every package (`expo lint` for mobile, `eslint .` for api)
+- `pnpm typecheck` — builds shared, then `tsc --noEmit` in every workspace package
 - No test runner is configured. There is no web target (a `pnpm web` script exists from the starter but web is not supported).
 
 There are no checked-in `ios/` or `android/` directories (gitignored); native projects are generated on demand (CNG/prebuild). Config lives in [apps/mobile/app.json](apps/mobile/app.json), which enables the `typedRoutes` and `reactCompiler` experiments.

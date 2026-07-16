@@ -26,9 +26,9 @@ Water intake · weight & body-measurement trends with charts · TDEE/BMR calcula
 ## Tech stack
 
 - **Expo SDK 57**, **React Native 0.86**, **React 19.2**, **expo-router v57**
-- **TypeScript** (strict), **pnpm monorepo** (`apps/mobile` + `packages/shared`)
+- **TypeScript** (strict), **pnpm monorepo** (`apps/mobile` + `apps/api` + `packages/shared`)
 - **Platforms: iOS and Android only** — there is no web version. (Some `*.web.tsx` files remain from the Expo starter but are not a shipping target.)
-- **Backend:** cloud from the start — authentication, a hosted database, and multi-device sync.
+- **Backend:** NestJS 11 + Fastify in `apps/api` — Drizzle ORM + PostgreSQL, zod-validated env, Docker-packaged; authentication, hosted database, and multi-device sync land here.
 - **Integrations:** Apple Health (iOS) + Android Health Connect for activity/steps; Open Food Facts + USDA FoodData Central for product/nutrition data and barcodes.
 
 ## Priorities
@@ -48,11 +48,20 @@ pnpm ios       # build & run on iOS  (expo run:ios)
 pnpm android   # build & run on Android (expo run:android)
 ```
 
+Backend (needs Docker for the dev database):
+
+```bash
+docker compose up -d                      # postgres:18 on localhost:5432
+cp apps/api/.env.example apps/api/.env    # DATABASE_URL + PORT
+pnpm db:migrate                           # apply drizzle migrations
+pnpm api                                  # NestJS in watch mode → http://localhost:3000/v1/health
+```
+
 Checks:
 
 ```bash
-pnpm lint        # ESLint (expo lint)
-pnpm typecheck   # tsc --noEmit in every workspace package
+pnpm lint        # every package (expo lint / eslint)
+pnpm typecheck   # builds shared, then tsc --noEmit in every workspace package
 ```
 
 There is no `pnpm web` target. Native projects (`ios/`, `android/`) are generated on demand (CNG/prebuild) and are gitignored.
@@ -70,8 +79,15 @@ apps/
       store/        zustand stores (diary, profile, onboarding, food-selection)
       theme/        "Kinetic" design system (palette, typography, tokens, provider)
     assets/         app icons, splash and images
+  api/              NestJS 11 + Fastify backend (global prefix /v1)
+    src/
+      config/       zod-validated env (fail-fast on boot)
+      db/           Drizzle ORM + postgres-js DI module, schema
+      health/       GET /v1/health
+      auth|catalog|diary|sync|billing/   empty module skeletons
+    drizzle/        committed SQL migrations
 packages/
-  shared/           @metabolizm/shared — data types shared with the future backend
+  shared/           @metabolizm/shared — data + API contract types shared by app and backend
 ```
 
 See [CLAUDE.md](CLAUDE.md) for architecture details (routing, platform-split components, theming, path aliases) and [AGENTS.md](AGENTS.md) for the Expo SDK 57 docs reminder.
