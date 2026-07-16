@@ -32,7 +32,7 @@ Expo APIs changed significantly in SDK 57 — consult https://docs.expo.dev/vers
 
 ## Commands
 
-Run from the repo root (proxy scripts into the workspace packages):
+Run from the repo root (proxy scripts into the workspace packages). Full runbook incl. database workflows and troubleshooting: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 - `pnpm ios` / `pnpm android` — build & run a dev build (`expo run:*`). Native modules (native tabs, `expo-symbols`) require a dev build, not Expo Go.
 - `pnpm start` — start the Metro dev server (press `i`/`a` to open iOS/Android)
