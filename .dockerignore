@@ -1,0 +1,26 @@
+# Rebuilt inside the image
+**/node_modules
+**/dist
+
+# Mobile-only / local state (workspace manifests must stay for frozen-lockfile)
+**/.expo
+apps/mobile/ios
+apps/mobile/android
+
+# Repo/local tooling
+.git
+.claude
+.fallow
+.vscode
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Secrets and noise
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.DS_Store
+**/.metro-health-check*
+**/*.tsbuildinfo
