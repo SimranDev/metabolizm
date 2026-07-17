@@ -9,6 +9,7 @@
     "android": "pnpm --filter mobile android",
     "api": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm --filter api start:dev",
     "api:build": "pnpm --filter api... build",
+    "admin": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm --filter admin dev",
     "db:generate": "pnpm --filter @metabolizm/db db:generate",
     "db:migrate": "pnpm --filter @metabolizm/db db:migrate",
     "db:studio": "pnpm --filter @metabolizm/db db:studio",

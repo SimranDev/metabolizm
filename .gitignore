@@ -42,3 +42,6 @@ example
 # generated native folders
 /apps/mobile/ios/
 /apps/mobile/android/
+
+# USDA FoodData Central downloads (bulk import inputs; up to ~211MB)
+/apps/admin/data/
