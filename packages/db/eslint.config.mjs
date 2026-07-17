@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["eslint.config.mjs", "dist/**"],
+    ignores: ["eslint.config.mjs", "dist/**", "drizzle/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -16,16 +16,12 @@ export default tseslint.config(
       },
       sourceType: "commonjs",
       parserOptions: {
-        projectService: true,
+        projectService: {
+          // drizzle.config.ts is kit-only and outside the build tsconfig.
+          allowDefaultProject: ["drizzle.config.ts"],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
-    },
-  },
-  {
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-floating-promises": "warn",
-      "@typescript-eslint/no-unsafe-argument": "warn",
     },
   },
 );

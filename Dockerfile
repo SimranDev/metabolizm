@@ -21,6 +21,9 @@ RUN pnpm run -r build
 RUN pnpm --filter=api deploy --prod --legacy /prod/api
 # Guard: nest build with TS 6 + incremental can silently emit nothing (nest-cli#3312).
 RUN test -f /prod/api/dist/main.js
+# Guard: migrations ship inside @metabolizm/db (files: dist + drizzle);
+# run them in prod with `node node_modules/@metabolizm/db/dist/migrate.js`.
+RUN test -d /prod/api/node_modules/@metabolizm/db/drizzle
 
 FROM node:24-slim AS api
 ENV NODE_ENV=production

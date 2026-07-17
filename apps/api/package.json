@@ -3,20 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "files": [
-    "dist",
-    "drizzle"
+    "dist"
   ],
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@metabolizm/db": "workspace:*",
     "@metabolizm/shared": "workspace:*",
     "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
@@ -34,8 +31,6 @@
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
     "@types/node": "^24.13.3",
-    "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
     "globals": "^17.7.0",
     "typescript": "~6.0.3",

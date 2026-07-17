@@ -1,10 +1,10 @@
+import * as schema from "@metabolizm/db";
 import { Global, Inject, Module, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { drizzle, PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import type { Env } from "../config/env";
-import * as schema from "./schema";
 
 /** Injection token for the Drizzle database instance. */
 export const DB = Symbol("DB");

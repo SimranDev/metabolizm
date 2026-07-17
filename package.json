@@ -7,12 +7,12 @@
     "start": "pnpm --filter mobile start",
     "ios": "pnpm --filter mobile ios",
     "android": "pnpm --filter mobile android",
-    "api": "pnpm --filter @metabolizm/shared build && pnpm --filter api start:dev",
+    "api": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm --filter api start:dev",
     "api:build": "pnpm --filter api... build",
-    "db:generate": "pnpm --filter api db:generate",
-    "db:migrate": "pnpm --filter api db:migrate",
-    "db:studio": "pnpm --filter api db:studio",
+    "db:generate": "pnpm --filter @metabolizm/db db:generate",
+    "db:migrate": "pnpm --filter @metabolizm/db db:migrate",
+    "db:studio": "pnpm --filter @metabolizm/db db:studio",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm --filter @metabolizm/shared build && pnpm -r exec tsc --noEmit"
+    "typecheck": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm -r typecheck"
   }
 }

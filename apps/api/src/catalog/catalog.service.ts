@@ -1,3 +1,4 @@
+import { foodPortions, foods } from "@metabolizm/db";
 import type {
   FoodDto,
   FoodListItemDto,
@@ -30,7 +31,6 @@ import { uuidv7 } from "uuidv7";
 import { z } from "zod";
 
 import { DB, type Database } from "../db/db.module";
-import { foodPortions, foods } from "../db/schema";
 import type {
   CreateFoodInput,
   ListFoodsQuery,
