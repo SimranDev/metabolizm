@@ -5,3 +5,4 @@ export * from "./profile";
 export * from "./api";
 export * from "./nutrients";
 export * from "./catalog";
+export * from "./catalog-schemas";
