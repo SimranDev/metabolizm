@@ -70,11 +70,15 @@ function escapeLike(input: string): string {
   return input.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-function isPgError(
-  error: unknown,
-  code: string,
-): error is postgres.PostgresError {
-  return error instanceof postgres.PostgresError && error.code === code;
+// drizzle wraps driver errors (DrizzleQueryError with the PostgresError as
+// its cause), so walk the cause chain instead of checking the top level.
+function isPgError(error: unknown, code: string): boolean {
+  let current: unknown = error;
+  while (current instanceof Error) {
+    if (current instanceof postgres.PostgresError) return current.code === code;
+    current = current.cause;
+  }
+  return false;
 }
 
 function toPortionDto(row: PortionRow): FoodPortionDto {
@@ -181,9 +185,11 @@ export class CatalogService {
     query: ListFoodsQuery,
   ): Promise<FoodSearchResponse> {
     // Anonymous callers only see system foods, so their rank is a constant.
+    // Cast makes it an expression: a bare integer in ORDER BY is a column
+    // position to Postgres (parens don't help — still a Const node).
     const ownRank = userId
       ? sql<number>`case when ${foods.ownerId} = ${userId} then 1 else 0 end`
-      : sql<number>`0`;
+      : sql<number>`0::int`;
     const verifiedRank = sql<number>`case when ${foods.isVerified} then 1 else 0 end`;
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
