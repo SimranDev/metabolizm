@@ -11,7 +11,13 @@ export {
 import { z } from "zod";
 
 export const listFoodsQuerySchema = z.object({
-  q: z.string().trim().min(1).max(100).optional(),
+  // Blank/whitespace-only q means browse mode (treated as absent), not a 400.
+  q: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().max(512).optional(),
 });

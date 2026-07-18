@@ -201,7 +201,14 @@ export class CatalogService {
         : isNull(foods.ownerId),
     );
     if (query.q) {
-      filters.push(ilike(foods.name, `%${escapeLike(query.q)}%`));
+      // 1-3 chars prefix-match ("chi" while typing means "starts with chi"),
+      // 4+ infix. Length judged on the raw trimmed q, before escaping grows
+      // it. Both shapes use the GIN trigram index (prefix via its
+      // anchor-padded trigrams).
+      const escaped = escapeLike(query.q);
+      filters.push(
+        ilike(foods.name, query.q.length <= 3 ? `${escaped}%` : `%${escaped}%`),
+      );
     }
     if (cursor) {
       // Mixed sort directions (DESC,DESC,DESC,ASC,ASC) rule out a tuple
