@@ -319,6 +319,16 @@ export class CatalogService {
 
   async getFood(userId: string | null, id: string): Promise<FoodDto> {
     const food = await this.loadVisible(userId, id);
+    // Fire-and-forget popularity bump so ranking improves with usage. Never
+    // awaited on the response path; a read must not fail over ranking
+    // bookkeeping, so errors are swallowed (`.catch` also starts the lazy
+    // drizzle builder). Leaves updatedAt/version alone on purpose —
+    // popularity is ranking metadata, not a content change.
+    void this.db
+      .update(foods)
+      .set({ popularity: sql`${foods.popularity} + 1` })
+      .where(eq(foods.id, id))
+      .catch(() => {});
     return toFoodDto(food, await this.loadPortions(id));
   }
 
