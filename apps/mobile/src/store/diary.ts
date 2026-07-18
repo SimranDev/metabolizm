@@ -103,6 +103,7 @@ export const useDiary = create<DiaryState>()(
           const day = state.entriesByDate[state.currentDate] ?? emptyEntries();
           const added = foods.map<DiaryEntry>((food) => ({
             entryId: makeEntryId(),
+            loggedAt: new Date().toISOString(),
             ...food,
           }));
           return {
