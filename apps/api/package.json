@@ -13,12 +13,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/expo": "^1.6.23",
     "@metabolizm/db": "workspace:*",
     "@metabolizm/shared": "workspace:*",
     "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-fastify": "^11.1.28",
+    "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.2",
