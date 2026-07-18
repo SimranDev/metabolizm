@@ -110,6 +110,16 @@ export async function signInWithApple(): Promise<AuthUser | null> {
     idToken: { token: credential.identityToken, nonce: rawNonce },
   });
   if (error || !data) throw authError(error, 'Apple sign-in failed. Please try again.');
+  // Apple sends fullName only in the FIRST credential (never in the identity
+  // token), which coincides with user creation — replace the email-derived
+  // name the server just stored. Best-effort: never fail the sign-in.
+  const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  if (fullName) {
+    await authClient.updateUser({ name: fullName }).catch(() => {});
+  }
   return sessionUser();
 }
 
