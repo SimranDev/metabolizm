@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -186,6 +187,88 @@ export const foods = pgTable(
     uniqueIndex("foods_source_ref_active_uq")
       .on(t.sourceRef)
       .where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`),
+  ],
+);
+
+export const mealEnum = pgEnum("meal", [
+  "breakfast",
+  "lunch",
+  "dinner",
+  "snack",
+]);
+
+// Food diary. Rows are denormalized snapshots taken at log time — editing or
+// deleting a catalog food must never change logged history; food_id is only a
+// "reopen and edit" reference. Unlike foods, macro/nutrient values here are
+// the consumed amounts for the logged quantity, NOT per 100 base units.
+export const diaryEntries = pgTable(
+  "diary_entries",
+  {
+    // App generates UUIDv7 client-side (local id == server id, so pushes are
+    // idempotent upserts); gen_random_uuid() is only a fallback.
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Client-local calendar day (the store's todayKey()), never derived
+    // server-side from a timestamp — that's the classic timezone bug.
+    entryDate: date("entry_date", { mode: "string" }).notNull(),
+    meal: mealEnum("meal").notNull(),
+    foodId: uuid("food_id").references(() => foods.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    servingLabel: text("serving_label").notNull(),
+    quantity: numeric("quantity", { precision: 8, scale: 3, mode: "number" }),
+    unitLabel: text("unit_label"),
+    // Grams or ml (the food's base_unit) one logged unit equals.
+    unitAmountInBase: numeric("unit_amount_in_base", {
+      precision: 10,
+      scale: 3,
+      mode: "number",
+    }),
+    energyKcal: numeric("energy_kcal", {
+      precision: 8,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    proteinG: numeric("protein_g", {
+      precision: 8,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    carbsG: numeric("carbs_g", {
+      precision: 8,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    fatG: numeric("fat_g", {
+      precision: 8,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    nutrients: jsonb("nutrients").$type<NutrientMap>().notNull().default({}),
+    verified: boolean("verified").notNull().default(false),
+    // Client-supplied creation moment; orders entries within a meal. The
+    // default only covers rows not written through the api.
+    loggedAt: timestamp("logged_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    version: bigint("version", { mode: "number" }).notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("diary_entries_user_date_idx")
+      .on(t.userId, t.entryDate)
+      .where(sql`deleted_at IS NULL`),
+    // Keyset delta pulls: (updated_at, id) > cursor scoped to the user.
+    index("diary_entries_user_updated_idx").on(t.userId, t.updatedAt, t.id),
   ],
 );
 
