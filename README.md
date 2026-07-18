@@ -18,7 +18,7 @@ A Health & Fitness app for **iOS and Android** — a "swiss-knife for fitness" w
 ### Built so far
 - Four-tab navigation (Log, Dashboard, Recipes, Profile) with a shared top header (plan icon · date · profile button).
 - Light/dark theming with the "Kinetic" design system (Space Grotesk / Instrument Sans).
-- Goal-based onboarding (BMR/TDEE plans), USDA food search, and an MMKV-persisted food diary; the remaining tabs are placeholders.
+- Goal-based onboarding (BMR/TDEE plans), food search against the repo's own catalog API (`apps/api`), and an MMKV-persisted food diary; the remaining tabs are placeholders.
 
 ### Roadmap / ideas
 Water intake · weight & body-measurement trends with charts · TDEE/BMR calculators with adaptive goals · intermittent-fasting timer · workout/exercise logging with calories burned · saved meals, favorites & meal planning · streaks and reminder notifications · micronutrient targets & insights · progress photos · home-screen widgets · Apple Watch / Wear OS companion · CSV data export · goal-based onboarding · subscription tiers (free / pro / pro max).
@@ -77,7 +77,7 @@ apps/
       app/          file-based routes (expo-router): (onboarding), (tabs) — index (Log), dashboard, recipes, profile — add-food, food-detail
       components/   shared UI (app-header, app-tabs, log/, dashboard/, onboarding/, ui/)
       hooks/        use-food-search, use-food-detail, use-color-scheme
-      lib/          runtime helpers: food (USDA search), health (BMR/TDEE math), auth
+      lib/          runtime helpers: api (catalog client), food (display/portion math), health (BMR/TDEE math), auth
       store/        zustand stores (diary, profile, onboarding, food-selection)
       theme/        "Kinetic" design system (palette, typography, tokens, provider)
     assets/         app icons, splash and images
