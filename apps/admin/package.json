@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "concurrently -k -n server,web \"tsx watch server/index.ts\" \"vite\"",
     "import:usda": "tsx scripts/import-usda.ts",
+    "cleanup:usda": "tsx scripts/cleanup-usda-names.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc -p web/tsconfig.json --noEmit"
   },
