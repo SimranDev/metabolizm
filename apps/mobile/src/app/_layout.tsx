@@ -17,10 +17,12 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router/stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { useProfile } from '@/store/profile';
 import { ThemeProvider, useTheme } from '@/theme';
+import { initWidgetSync } from '@/widgets/sync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -45,6 +47,11 @@ export default function RootLayout() {
     InstrumentSans_600SemiBold,
     InstrumentSans_700Bold,
   });
+
+  // Keep the home-screen widgets fed with today's diary data.
+  useEffect(() => {
+    initWidgetSync();
+  }, []);
 
   // Hold the native splash until fonts AND the persisted profile are ready, so we
   // never flash the wrong route (onboarding vs. app) before hydration completes.

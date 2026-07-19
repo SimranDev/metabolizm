@@ -47,6 +47,74 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID"
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "CaloriePace",
+              "displayName": "Calories · Day pace",
+              "description": "Calories remaining and your pace through the day.",
+              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "contentMarginsDisabled": false
+            },
+            {
+              "name": "MacroBars",
+              "displayName": "Macros",
+              "description": "Today's carbs, fat and protein progress.",
+              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "contentMarginsDisabled": false
+            },
+            {
+              "name": "PlateRing",
+              "displayName": "Plate",
+              "description": "Calories left on your plate with the macro split.",
+              "supportedFamilies": ["systemSmall"],
+              "contentMarginsDisabled": false
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "CaloriePace",
+              "label": "Calories · Day pace",
+              "description": "Calories remaining and your pace through the day.",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "MacroBars",
+              "label": "Macros",
+              "description": "Today's carbs, fat and protein progress.",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "PlateRing",
+              "label": "Plate",
+              "description": "Calories left on your plate with the macro split.",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "none",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "experiments": {

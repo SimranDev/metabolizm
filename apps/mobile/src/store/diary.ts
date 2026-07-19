@@ -48,7 +48,7 @@ const MAX_LOCAL_DAYS = 7;
 const MAX_RECENTS = 20;
 
 /** Local `YYYY-MM-DD` for a date — the key into `entriesByDate`. */
-function todayKey(date = new Date()): string {
+export function todayKey(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");

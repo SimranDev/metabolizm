@@ -194,7 +194,14 @@
       "Bash(curl -s 'http://localhost:3000/v1/catalog/foods?q=icken&limit=5')",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(i['name']\\) for i in d['items']]; print\\('count:', len\\(d['items']\\)\\)\")",
       "Bash(python3 -)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(pnpm api *)",
+      "Bash(pnpm --filter admin typecheck)",
+      "Bash(pnpm --filter admin lint)",
+      "Bash(pnpm --filter admin cleanup:usda)",
+      "Bash(npm view *)",
+      "Bash(pnpm db:generate --name auth)",
+      "Bash(git commit -m 'feat\\(db\\): better-auth schema — users columns + sessions/accounts/verifications + migration 0003 *)"
     ]
   },
   "enabledPlugins": {
