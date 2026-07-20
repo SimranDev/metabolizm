@@ -17,6 +17,10 @@
     "db:studio": "pnpm --filter @metabolizm/db db:studio",
     "db:dbml": "pnpm --filter @metabolizm/db db:dbml",
     "lint": "pnpm -r lint",
+    "test": "vitest run",
     "typecheck": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

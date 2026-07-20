@@ -4,5 +4,7 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  // Tests stay out of dist/ (and the Docker image); `typecheck` still covers
+  // them via tsconfig.json, which has no such exclude.
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

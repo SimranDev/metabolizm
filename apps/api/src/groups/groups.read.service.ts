@@ -35,6 +35,7 @@ import { DB, type Database } from "../db/db.module";
 import type { DaySummaryFacts } from "./adherence";
 import { addDays, dateRange, localDateFor, weekStartOf } from "./dates";
 import { GroupsService, isCoach, type GroupRow, type MemberRow } from "./groups.service";
+import { activeMembersQuery } from "./queries";
 import {
   buildLeaderboardEntries,
   buildMemberDayCard,
@@ -401,21 +402,7 @@ export class GroupsReadService {
   }
 
   private async activeMembers(groupId: string): Promise<ActiveMember[]> {
-    return this.db
-      .select({
-        userId: groupMembers.userId,
-        name: users.name,
-        image: users.image,
-        timezone: users.timezone,
-        role: groupMembers.role,
-        shareConfig: groupMembers.shareConfig,
-      })
-      .from(groupMembers)
-      .innerJoin(users, eq(groupMembers.userId, users.id))
-      .where(
-        and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")),
-      )
-      .orderBy(asc(groupMembers.joinedAt));
+    return activeMembersQuery(this.db, groupId);
   }
 
   /** Full summary rows, keyed userId → date → facts. */
