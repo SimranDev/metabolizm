@@ -43,6 +43,13 @@
       "when": 1784511275076,
       "tag": "0005_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784536256623,
+      "tag": "0006_weight",
+      "breakpoints": true
     }
   ]
 }

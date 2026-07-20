@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   date,
   index,
   integer,
@@ -18,6 +19,11 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
+// Declared above `users` on purpose: pgEnum is a runtime call, so a table body
+// referencing it before this line would throw a TDZ ReferenceError on import.
+// Matches WeightUnit in @metabolizm/shared — stone is a display unit only.
+export const weightUnitEnum = pgEnum("weight_unit", ["kg", "lb", "st"]);
+
 // Auth tables follow Better Auth's core model; TS property names must equal
 // Better Auth's field names (and export names its pluralized model names) so
 // the drizzle adapter needs no model/field mapping.
@@ -29,6 +35,8 @@ export const users = pgTable("users", {
   image: text("image"),
   // IANA timezone name; drives each member's "today" in group reads.
   timezone: text("timezone").notNull().default("UTC"),
+  // Display preference only — every weight is stored in kilograms.
+  weightUnit: weightUnitEnum("weight_unit").notNull().default("kg"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -458,7 +466,10 @@ export const dailySummaries = pgTable(
       scale: 2,
       mode: "number",
     }),
-    // Written by a future weight-log path; diary recompute leaves it alone.
+    // Derived cache of the day's canonical weigh-in, owned exclusively by
+    // SummariesService.recomputeDayWeight (from weight_entries). The diary
+    // recompute never touches it and this never touches nutrition, so the two
+    // writers share the PK row without clobbering each other.
     weightKg: numeric("weight_kg", { precision: 6, scale: 2, mode: "number" }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -505,6 +516,104 @@ export const userTargets = pgTable(
       .defaultNow(),
   },
   (t) => [index("user_targets_user_effective_idx").on(t.userId, t.effectiveFrom)],
+);
+
+// Append-only weigh-in log. Several entries a day are normal (morning, then
+// post-workout), so the day's canonical value is a *pick* rather than the row
+// itself — see DAY_WEIGHT_RULE in apps/api/src/weight/compute.ts, which also
+// decides what daily_summaries.weight_kg caches.
+export const weightEntries = pgTable(
+  "weight_entries",
+  {
+    // App generates UUIDv7 client-side (local id == server id, so a retried
+    // offline log is an idempotent upsert); gen_random_uuid() is a fallback.
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Client-local calendar day, never derived server-side from logged_at —
+    // that's the classic timezone bug (same rule as diary_entries).
+    entryDate: date("entry_date", { mode: "string" }).notNull(),
+    weightKg: numeric("weight_kg", {
+      precision: 6,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    // Client-supplied weigh-in moment; orders entries within a day, which is
+    // what picks the day's canonical value.
+    loggedAt: timestamp("logged_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    note: text("note"),
+    // Plain text rather than an enum so adding an importer (Apple Health,
+    // Health Connect, a smart scale) needs no migration.
+    source: text("source").notNull().default("manual"),
+    version: bigint("version", { mode: "number" }).notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    // Day and range reads, plus the DISTINCT ON that picks each day's
+    // canonical entry — logged_at is in the index so that pick stays a scan.
+    index("weight_entries_user_date_idx")
+      .on(t.userId, t.entryDate, t.loggedAt)
+      .where(sql`deleted_at IS NULL`),
+    // Keyset delta pulls: (updated_at, id) > cursor scoped to the user.
+    index("weight_entries_user_updated_idx").on(t.userId, t.updatedAt, t.id),
+    // Catches a pound value entered as kilograms. Bare column names on
+    // purpose: `${t.weightKg}` renders table-qualified, which Postgres
+    // normalizes away and drizzle-kit would then read back as phantom drift.
+    check(
+      "weight_entries_weight_kg_check",
+      sql`weight_kg > 20 AND weight_kg < 500`,
+    ),
+  ],
+);
+
+// Append-only weight-goal history, shaped exactly like user_targets: the goal
+// for a day = latest row with effective_from <= that day. starting_weight_kg
+// is snapshotted when the goal is set, so re-goaling never rewrites the
+// progress percentage or "since start" of days already lived.
+export const userWeightGoals = pgTable(
+  "user_weight_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+    targetWeightKg: numeric("target_weight_kg", {
+      precision: 6,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    startingWeightKg: numeric("starting_weight_kg", {
+      precision: 6,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    // Optional user-chosen deadline. Distinct from the trend-projected date
+    // the API computes, which is never stored.
+    targetDate: date("target_date", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("user_weight_goals_user_effective_idx").on(
+      t.userId,
+      t.effectiveFrom,
+    ),
+    check(
+      "user_weight_goals_weights_check",
+      sql`target_weight_kg > 20 AND target_weight_kg < 500 AND starting_weight_kg > 20 AND starting_weight_kg < 500`,
+    ),
+  ],
 );
 
 // Comments/reactions on a member's day card. subject_date is the subject's
