@@ -15,6 +15,7 @@
     "db:generate": "pnpm --filter @metabolizm/db db:generate",
     "db:migrate": "pnpm --filter @metabolizm/db db:migrate",
     "db:studio": "pnpm --filter @metabolizm/db db:studio",
+    "db:dbml": "pnpm --filter @metabolizm/db db:dbml",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm -r typecheck"
   }

@@ -17,8 +17,11 @@ export default tseslint.config(
       sourceType: "commonjs",
       parserOptions: {
         projectService: {
-          // drizzle.config.ts is kit-only and outside the build tsconfig.
-          allowDefaultProject: ["drizzle.config.ts"],
+          // Both are tooling-only and outside the build tsconfig (include: ["src"]).
+          allowDefaultProject: [
+            "drizzle.config.ts",
+            "scripts/generate-dbml.ts",
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },

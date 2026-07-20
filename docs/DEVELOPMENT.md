@@ -72,8 +72,9 @@ Inspect mode is a debugging stance, not a code change: app code keeps calling th
 2. `pnpm db:generate` — diff against snapshots, write a new SQL migration to `packages/db/drizzle/` (prints `No schema changes, nothing to migrate` when clean). Custom name: `pnpm --filter @metabolizm/db exec drizzle-kit generate --name <name>`
 3. `pnpm db:migrate` — apply unapplied migrations
 4. `pnpm db:studio` — browse the database at https://local.drizzle.studio
+5. `pnpm db:dbml` — refresh the schema diagram (see [Schema diagram (ERD)](#schema-diagram-erd))
 
-All three read `DATABASE_URL` from `apps/api/.env` — [packages/db/drizzle.config.ts](../packages/db/drizzle.config.ts) loads it via a relative dotenv path, so that file stays the single source of truth.
+`db:generate`/`db:migrate`/`db:studio` read `DATABASE_URL` from `apps/api/.env` — [packages/db/drizzle.config.ts](../packages/db/drizzle.config.ts) loads it via a relative dotenv path, so that file stays the single source of truth. (`db:dbml` is offline and needs no database.)
 
 Commit generated migrations (`packages/db/drizzle/`) together with the schema change.
 
@@ -87,6 +88,25 @@ Commit generated migrations (`packages/db/drizzle/`) together with the schema ch
 ```bash
 docker compose down -v && docker compose up -d && pnpm db:migrate
 ```
+
+### Schema diagram (ERD)
+
+Drizzle has no built-in diagram export — Studio is a data browser, not an ERD. Instead, `pnpm db:dbml` compiles [packages/db/src/schema.ts](../packages/db/src/schema.ts) into [DBML](https://dbml.dbdiagram.io/) at `packages/db/schema.dbml`, which any DBML viewer renders as a diagram you can export:
+
+```bash
+pnpm db:dbml                              # writes packages/db/schema.dbml
+```
+
+Then paste the file's contents into either renderer and export as PNG/PDF/SVG:
+
+- **<https://dbdiagram.io>** — quickest for a one-off image.
+- **<https://azimutt.app>** — better for exploring a larger schema (saved layouts, per-table focus).
+
+It reads the TypeScript schema directly, so it needs **no running database** and never drifts from a migration you forgot to apply. Tables, columns, types, defaults, indexes, enums, and every foreign key (including `foods.forked_from` → `foods.id` self-references and `on delete` behaviour) come through.
+
+`schema.dbml` is **committed** so the current diagram is reviewable in git and its diff shows structural changes alongside the migration. Regenerate it in the same commit as a schema change — nothing enforces this, so treat it like the generated migrations.
+
+> The generator ([packages/db/scripts/generate-dbml.ts](../packages/db/scripts/generate-dbml.ts)) is a dev-only script: it lives outside the build tsconfig (`include: ["src"]`), like `drizzle.config.ts`, so it never lands in `dist/` or the image the API ships.
 
 ## 4. Workspace packages (`@metabolizm/shared`, `@metabolizm/db`)
 
