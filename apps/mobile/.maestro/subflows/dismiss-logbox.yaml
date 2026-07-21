@@ -1,0 +1,24 @@
+appId: com.anonymous.metabolizmrn
+name: Dismiss the LogBox warning toast if one is present
+---
+# Dev builds show a LogBox toast for the cold-start React warning (F2). It is
+# laid out over the bottom CTA and swallows taps on it, so every flow that
+# starts from a cold launch must clear it first. Tapping the toast opens the
+# LogBox panel, which has a real "Dismiss" button.
+- runFlow:
+    when:
+      visible: "Can't perform a React state update.*"
+    commands:
+      - tapOn: "Can't perform a React state update.*"
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+
+# If a LogBox panel is already open (e.g. left over from a previous flow).
+- runFlow:
+    when:
+      visible: "Console Error"
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true

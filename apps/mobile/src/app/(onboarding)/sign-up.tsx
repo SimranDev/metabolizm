@@ -7,6 +7,7 @@ import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold'
 import { SocialAuthButtons } from '@/components/onboarding/social-auth-buttons';
 import { Input } from '@/components/ui/input';
 import { ThemedText } from '@/components/themed-text';
+import { usersApi } from '@/lib/api';
 import { signUp, type AuthUser } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
 import { buildMetrics, resolveSelectedPlan } from '@/lib/onboarding-metrics';
@@ -58,6 +59,10 @@ export default function SignUpScreen() {
       macros: plan.macros,
     };
     haptics.success();
+    // A session exists now, so this is the first call that can actually land.
+    // Without it the account keeps the server's UTC default until the next
+    // launch, and day one's entries are filed against the wrong local date.
+    usersApi.pushDeviceTimezone();
     completeOnboarding(profile);
     answers.reset();
   };
@@ -88,6 +93,15 @@ export default function SignUpScreen() {
           { label: 'Plan', value: plan.label },
         ]}
       />
+
+      {/* Above the social buttons on purpose. Social sign-in fails up here, so
+          an error rendered after the email/password fields sits off-screen and
+          the provider button just looks inert. */}
+      {error ? (
+        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
+          {error}
+        </ThemedText>
+      ) : null}
 
       <SocialAuthButtons
         mode="sign-up"
@@ -124,12 +138,6 @@ export default function SignUpScreen() {
         autoComplete="password-new"
         textContentType="newPassword"
       />
-
-      {error ? (
-        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
-          {error}
-        </ThemedText>
-      ) : null}
     </OnboardingScaffold>
   );
 }

@@ -68,6 +68,10 @@ export default function DobScreen() {
 }
 
 const styles = StyleSheet.create({
-  picker: { alignItems: 'center' },
+  // `stretch`, never `center`: on Android the inline picker renders a Compose
+  // `Host` with `matchContents={{ vertical: true }}`, so it reports a height but
+  // no intrinsic width. Under a cross-axis `center` parent it collapses to zero
+  // width and nothing draws at all — the step looks empty and age stays 25.
+  picker: { alignSelf: 'stretch' },
   warn: { textAlign: 'center' },
 });

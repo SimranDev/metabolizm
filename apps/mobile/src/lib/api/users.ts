@@ -28,3 +28,16 @@ export function updateMe(
 export function deviceTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+
+/**
+ * Push the device's zone, fire-and-forget.
+ *
+ * Called on every launch AND immediately after sign-in/sign-up. The launch call
+ * alone is not enough: on the launch where an account is created it has already
+ * run and failed (no session existed yet), so the account would keep the
+ * server's `UTC` default for the whole first session. At UTC+12 that files a
+ * morning entry against the previous day.
+ */
+export function pushDeviceTimezone(): void {
+  void updateMe({ timezone: deviceTimezone() }).catch(() => {});
+}

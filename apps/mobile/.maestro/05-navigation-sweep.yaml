@@ -1,0 +1,47 @@
+appId: com.anonymous.metabolizmrn
+name: Navigation sweep — every tab, the persistent header, resume
+tags:
+  - smoke
+---
+- launchApp
+- runFlow: subflows/dismiss-logbox.yaml
+
+# The AppHeader is rendered above the native tabs and must persist everywhere.
+- assertVisible: "Profile settings"
+
+- tapOn: "Log"
+- assertVisible: "CALORIES"
+- assertVisible: "Breakfast"
+- assertVisible: "Lunch"
+- assertVisible: "Dinner"
+- assertVisible: "Snack"
+
+- tapOn: "Vitals"
+- assertVisible: "WEIGHT"
+- assertVisible: "PROTEIN"
+- assertVisible: "ENERGY"
+# Only tiles with a real data source ship; the rest says so honestly.
+- assertVisible: "Steps, sleep and heart rate arrive with Apple Health and Health Connect."
+
+- tapOn: "Groups"
+# Assert the tab itself, not the empty state — this account may already have a
+# group, in which case "Train together, privately" is correctly absent.
+- assertVisible: "Create a group"
+
+- tapOn: "Recipes"
+- assertVisible: "Coming soon"
+
+- tapOn: "Profile"
+- assertVisible: "Coming soon"
+
+# ── modals dismiss cleanly ────────────────────────────────────────────────
+- tapOn: "Log"
+- tapOn: "Add food to breakfast"
+- assertVisible: "Search for a food"
+- tapOn: "Close"
+- assertVisible: "CALORIES"
+
+# ── background / resume ───────────────────────────────────────────────────
+- pressKey: Home
+- launchApp
+- assertVisible: "CALORIES"

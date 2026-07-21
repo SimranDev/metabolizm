@@ -1,0 +1,82 @@
+appId: com.anonymous.metabolizmrn
+name: Onboarding — fresh install through the plan step
+tags:
+  - onboarding
+---
+- launchApp:
+    clearState: true
+
+# Kept as a guard, not a workaround: the cold-start LogBox toast that used to
+# swallow this first tap is fixed, so this should now always no-op. If it ever
+# starts firing again, a warning has been reintroduced at startup.
+- runFlow: subflows/dismiss-logbox.yaml
+
+- assertVisible: "Get started"
+- tapOn: "Get started"
+
+# ── goal ──────────────────────────────────────────────────────────────────
+- assertVisible: "What's your goal?"
+- tapOn: "Lose weight"
+- tapOn: "Continue"
+
+# ── sex ───────────────────────────────────────────────────────────────────
+- assertVisible: "What's your sex?"
+- tapOn: "Male"
+- tapOn: "Continue"
+
+# ── date of birth ─────────────────────────────────────────────────────────
+# The picker must actually render — it previously collapsed to zero width on
+# Android and left age silently pinned at 25, which feeds BMR/TDEE.
+- assertVisible: "When were you born?"
+- assertVisible: "Select date"
+# Tap near the right edge so the caret lands at the end of the text, then
+# backspace. `eraseText` hangs against this Compose field, so it is avoided.
+- tapOn:
+    point: "85%,40%"        # the MM/DD/YYYY field
+- repeat:
+    times: 12
+    commands:
+      - pressKey: Backspace
+- inputText: "03151990"
+- assertVisible: "36 yrs"   # proves the entered date reaches the age readout
+- tapOn: "Continue"
+
+# ── height ────────────────────────────────────────────────────────────────
+- assertVisible: "How tall are you?"
+- tapOn:
+    point: "50%,20%"   # the cm field: no testID, no a11y label (see T1)
+- inputText: "178"
+# No `hideKeyboard`: the emulator's floating IME does not consume the back
+# gesture, so it pops the navigation stack instead of closing the keyboard.
+# The Continue button stays reachable with the keyboard up.
+- tapOn: "Continue"
+
+# ── current weight ────────────────────────────────────────────────────────
+- assertVisible: "What's your current weight?"
+- tapOn:
+    point: "50%,20%"
+- inputText: "75"
+- assertVisible: "BMI"
+- tapOn: "Continue"
+
+# ── goal weight ───────────────────────────────────────────────────────────
+- assertVisible: "What's your goal weight?"
+- tapOn:
+    point: "50%,20%"
+- inputText: "70"
+- tapOn: "Continue"
+
+# ── activity ──────────────────────────────────────────────────────────────
+- assertVisible: "How active are you?"
+- tapOn: "Moderately active"
+- tapOn: "Continue"
+
+# ── plan ──────────────────────────────────────────────────────────────────
+# Mifflin-St Jeor for male / 36 y / 178 cm / 75 kg / moderate:
+# (10*75 + 6.25*178 - 5*36 + 5) * 1.55 = 2,616. Asserting the number ties the
+# date-of-birth entry above to the target it is supposed to drive — with age
+# stuck at 25 this read 2,701.
+- assertVisible: "Choose your pace"
+- assertVisible: "Maintenance is about 2,616 cal/day.*"
+- tapOn: "This looks good"
+- assertVisible: "Save your plan"

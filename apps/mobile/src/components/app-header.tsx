@@ -56,7 +56,12 @@ function PlanIcon() {
 }
 
 /**
- * Date placeholder. Will become a calendar / day-switching control.
+ * Today's date.
+ *
+ * Deliberately inert — no `Pressable`, no chevron — until day-switching is
+ * actually built. It previously rendered a pressable with `onPress={() => {}}`
+ * and a `chevron.down`, which reads as a working day picker and does nothing.
+ * Add both back together with the calendar control.
  */
 function DateSwitcher() {
   const label = new Date().toLocaleDateString(undefined, {
@@ -65,21 +70,7 @@ function DateSwitcher() {
     day: 'numeric',
   });
 
-  return (
-    <Pressable onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
-      <Badge
-        label={label}
-        trailing={(color) => (
-          <SymbolView
-            name={{ ios: 'chevron.down', android: 'expand_more' }}
-            size={14}
-            tintColor={color}
-            fallback={<View />}
-          />
-        )}
-      />
-    </Pressable>
-  );
+  return <Badge label={label} />;
 }
 
 /**

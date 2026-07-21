@@ -1,3 +1,14 @@
+/**
+ * The onboarding weigh-in step.
+ *
+ * Named `current-weight`, not `weight`: `(onboarding)` is a route group and
+ * contributes nothing to the path, so a `weight.tsx` here resolves to `/weight`
+ * — the same route as `app/weight/index.tsx`. That one is registered inside
+ * `<Stack.Protected guard={onboardingComplete}>`, so during onboarding it is
+ * not mounted and every `router.push('/weight')` silently did nothing, trapping
+ * the user on the height step. Renaming this file back would restore that.
+ */
+
 import { useRouter } from 'expo-router';
 
 import { LiveReadout } from '@/components/onboarding/live-readout';

@@ -18,7 +18,7 @@ export default function HeightScreen() {
       progress={stepProgress('height')}
       title="How tall are you?"
       nextDisabled={!valid}
-      onNext={() => router.push('/weight')}>
+      onNext={() => router.push('/current-weight')}>
       <HeightField
         key={heightUnit}
         unit={heightUnit}

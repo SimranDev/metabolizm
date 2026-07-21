@@ -6,6 +6,7 @@ import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold'
 import { SocialAuthButtons } from '@/components/onboarding/social-auth-buttons';
 import { Input } from '@/components/ui/input';
 import { ThemedText } from '@/components/themed-text';
+import { usersApi } from '@/lib/api';
 import { signIn } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
 import { useProfile } from '@/store/profile';
@@ -19,6 +20,8 @@ export default function SignInScreen() {
 
   const onSignedIn = () => {
     haptics.success();
+    // A session exists now, so this is the first call that can actually land.
+    usersApi.pushDeviceTimezone();
     // TODO(server-profile): fetch the user's saved profile from the backend
     // and skip onboarding once the endpoint exists. Locally, restore a
     // profile if this device has one, otherwise send them through setup.
@@ -50,6 +53,15 @@ export default function SignInScreen() {
       nextLabel={submitting ? 'Signing in…' : 'Sign in'}
       nextDisabled={submitting || !email || !password}
       onNext={onSubmit}>
+      {/* Above the social buttons on purpose. Social sign-in fails up here, so
+          an error rendered after the email/password fields sits off-screen and
+          the provider button just looks inert. */}
+      {error ? (
+        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
+          {error}
+        </ThemedText>
+      ) : null}
+
       <SocialAuthButtons
         mode="sign-in"
         busy={submitting}
@@ -85,12 +97,6 @@ export default function SignInScreen() {
         autoComplete="password"
         textContentType="password"
       />
-
-      {error ? (
-        <ThemedText type="sm" themeColor="dangerText" style={styles.error}>
-          {error}
-        </ThemedText>
-      ) : null}
     </OnboardingScaffold>
   );
 }

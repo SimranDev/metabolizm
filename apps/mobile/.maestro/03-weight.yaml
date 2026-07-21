@@ -1,0 +1,48 @@
+appId: com.anonymous.metabolizmrn
+name: Weight — log a weigh-in, unit conversion, history
+tags:
+  - weight
+---
+- launchApp
+- runFlow: subflows/dismiss-logbox.yaml
+
+- tapOn: "Vitals"
+- assertVisible: "WEIGHT"
+- tapOn: "Weight.*Opens weight detail."
+
+# ── empty state ───────────────────────────────────────────────────────────
+# Every unset stat must render an em-dash placeholder, never a blank.
+# "MORNING", not "CURRENT" — the day keeps its first weigh-in (DAY_WEIGHT_RULE).
+- assertVisible: "MORNING"
+- assertVisible: "GOAL"
+- assertVisible: "STREAK"
+
+# ── log in kg ─────────────────────────────────────────────────────────────
+- tapOn: "Log weight"
+- assertVisible: "Weight in kg"
+- tapOn:
+    point: "50%,71%"            # the big weight field — no testID (T1)
+- inputText: "74.5"
+- tapOn: "Save weigh-in"
+- assertVisible: "1 d"          # streak starts
+
+# ── unit conversion ───────────────────────────────────────────────────────
+- tapOn: "lb"
+- assertVisible: "164.2"        # 74.5 kg -> 164.2 lb
+- tapOn: "kg"
+- assertVisible: "74.5"
+
+# ── a value typed in lb must be stored as kg ──────────────────────────────
+- tapOn: "lb"
+- tapOn: "Log weight"
+- assertVisible: "Weight in lb"  # the unit is restated inside the sheet
+- tapOn:
+    point: "50%,71%"
+- inputText: "165"
+- tapOn: "Save weigh-in"
+# 165 lb -> 74.84 kg server-side. It appears in History, but CURRENT stays at
+# the day's FIRST weigh-in by design (DAY_WEIGHT_RULE = "earliest") — see F7.
+- assertVisible: "History"
+
+# GOAL stays "—" because nothing ever calls setGoal (F6). Once fixed, assert the
+# goal value and the "Journey to goal" block here.

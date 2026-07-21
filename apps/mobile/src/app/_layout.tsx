@@ -22,7 +22,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { usersApi } from '@/lib/api';
-import { useProfile } from '@/store/profile';
+import { useProfile, useProfileHydrated } from '@/store/profile';
 import { ThemeProvider, useTheme } from '@/theme';
 import { initWidgetSync } from '@/widgets/sync';
 
@@ -36,7 +36,7 @@ SplashScreen.preventAutoHideAsync();
  * everyday hot path.
  */
 export default function RootLayout() {
-  const hydrated = useProfile((s) => s.hydrated);
+  const hydrated = useProfileHydrated();
   const onboardingComplete = useProfile((s) => s.onboardingComplete);
   const [fontsLoaded, fontError] = useFonts({
     SpaceGrotesk_400Regular,
@@ -58,9 +58,10 @@ export default function RootLayout() {
   // The server defaults users.timezone to UTC and this is its only writer, yet
   // entry dates, logging streaks and every group's notion of "today" pivot on
   // it. Pushed once per launch, fire-and-forget: a signed-out or offline
-  // device simply tries again next time.
+  // device simply tries again next time. The auth screens push it again right
+  // after sign-in/sign-up, when a session finally exists.
   useEffect(() => {
-    void usersApi.updateMe({ timezone: usersApi.deviceTimezone() }).catch(() => {});
+    usersApi.pushDeviceTimezone();
   }, []);
 
   // Hold the native splash until fonts AND the persisted profile are ready, so we

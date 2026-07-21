@@ -67,19 +67,13 @@ export function AddFoodScreen({ meal }: Props) {
 
   const { items, loading, error } = useFoodSearch(query);
 
-  // Live catalog search once the query is long enough; the static RECENT list
-  // otherwise. Meals / My Foods have no data source yet, so they stay empty.
-  // Both sources normalize to the quick-add draft the row renders and the "+"
-  // toggle adds: search rows on their default-portion basis, recents as last
-  // logged.
+  // Live catalog search once the query is long enough; the persisted recents
+  // otherwise. Both sources normalize to the quick-add draft the row renders
+  // and the "+" toggle adds: search rows on their default-portion basis,
+  // recents as last logged.
   const trimmed = query.trim();
-  const searchable = filter !== "meals" && filter !== "myfoods";
-  const showingSearch = searchable && trimmed.length >= MIN_QUERY_LENGTH;
-  const list: DiaryFood[] = !searchable
-    ? []
-    : showingSearch
-      ? items.map(toQuickAdd)
-      : recentFoods;
+  const showingSearch = trimmed.length >= MIN_QUERY_LENGTH;
+  const list: DiaryFood[] = showingSearch ? items.map(toQuickAdd) : recentFoods;
 
   const selected = Object.values(selectedItems);
   const selectedCalories = selected.reduce((sum, f) => sum + f.calories, 0);
@@ -210,14 +204,13 @@ function Header({
         />
       </View>
 
-      {/* Meal switcher — placeholder; opening a picker comes later. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Adding to ${meal}. Change meal`}
-        style={({ pressed }) => [styles.titleButton, pressed && styles.pressed]}>
+      {/* Just the destination meal. It announced itself as "Change meal" and
+          carried a chevron while having no `onPress` at all — a button that
+          does nothing. Restore the Pressable and the chevron together with the
+          picker; until then the meal comes from the route param. */}
+      <View style={styles.titleButton}>
         <ThemedText type="h3">{meal}</ThemedText>
-        <FontAwesomeFreeSolid name="chevron-down" size={13} color={colors.text} />
-      </Pressable>
+      </View>
 
       <View style={[styles.headerSide, styles.headerSideRight]}>
         <IconButton

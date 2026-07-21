@@ -130,7 +130,11 @@ export default function WeightScreen() {
 
           {/* Stat chips */}
           <View style={styles.chips}>
-            <Chip label="CURRENT" value={value(stats?.currentKg, unit)} />
+            {/* "MORNING", not "CURRENT": the server's DAY_WEIGHT_RULE is
+                "earliest", so a day keeps its FIRST weigh-in. Labelled
+                "current" it looks broken when a second weigh-in shows up in
+                History but this number does not move. */}
+            <Chip label="MORNING" value={value(stats?.currentKg, unit)} />
             <Chip label="GOAL" value={value(goal?.targetWeightKg, unit)} />
             <Chip label="TO GO" value={value(toGoKg, unit)} highlight />
             <Chip

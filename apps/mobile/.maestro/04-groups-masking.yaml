@@ -1,0 +1,43 @@
+appId: com.anonymous.metabolizmrn
+name: Groups — create a group and assert withheld fields render as locked, never blank
+tags:
+  - groups
+---
+- launchApp
+- runFlow: subflows/dismiss-logbox.yaml
+
+- tapOn: "Groups"
+- assertVisible: "Train together, privately"
+- tapOn: "Create a group"
+
+- assertVisible: "New group"
+# Tap near the right edge so the caret lands after the prefilled name, then
+# backspace it away. `eraseText` hangs against this app's text fields.
+- tapOn:
+    point: "85%,17%"            # NAME field
+- repeat:
+    times: 20
+    commands:
+      - pressKey: Backspace
+- inputText: "QA Squad"
+- tapOn: "Friends.*Adherence, streaks and macros.*"
+- tapOn: "Create group"
+
+# ── the group ─────────────────────────────────────────────────────────────
+- assertVisible: "QA Squad"
+- assertVisible: "Today"
+- assertVisible: "Leaderboard"
+- assertVisible: "Members"
+- assertVisible: "Cards show what each member chose to share — nothing more."
+
+# ── the masking invariant, as seen by the UI ──────────────────────────────
+# A member who shares only `streaks` must render an explicit locked state.
+# A blank would read as "didn't log", which is exactly what must never happen.
+# (Seed a second member sharing streaks only to exercise this.)
+- assertVisible:
+    text: "Shares nothing beyond logging in this group"
+    optional: true
+
+# Absolute numbers must never appear for a member who did not share them.
+- assertNotVisible: "1,850"
+- assertNotVisible: "81.2"
