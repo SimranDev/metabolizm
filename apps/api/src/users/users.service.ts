@@ -1,8 +1,10 @@
-import { dailySummaries, userTargets, users } from "@metabolizm/db";
+import { dailySummaries, userProfiles, userTargets, users } from "@metabolizm/db";
 import type {
   MeDto,
+  PutMyProfileInput,
   PutMyTargetsInput,
   UpdateMeInput,
+  UserProfileDto,
   UserTargetDto,
 } from "@metabolizm/shared";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
@@ -14,6 +16,23 @@ import { SummariesService } from "../summaries/summaries.service";
 
 type UserRow = typeof users.$inferSelect;
 type TargetRow = typeof userTargets.$inferSelect;
+type ProfileRow = typeof userProfiles.$inferSelect;
+
+function toProfileDto(row: ProfileRow): UserProfileDto {
+  return {
+    goal: row.goal,
+    sex: row.sex,
+    dob: row.dob,
+    heightCm: row.heightCm,
+    weightKg: row.weightKg,
+    goalWeightKg: row.goalWeightKg,
+    activityLevel: row.activityLevel,
+    heightUnit: row.heightUnit,
+    planId: row.planId as UserProfileDto["planId"],
+    customWeeklyRateKg: row.customWeeklyRateKg,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
 function toTargetDto(row: TargetRow): UserTargetDto {
   return {
@@ -132,5 +151,48 @@ export class UsersService {
 
       return toTargetDto(target);
     });
+  }
+
+  /** The caller's onboarding snapshot, or null if they never saved one. */
+  async myProfile(userId: string): Promise<UserProfileDto | null> {
+    const [row] = await this.db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId))
+      .limit(1);
+    return row ? toProfileDto(row) : null;
+  }
+
+  /**
+   * Upsert the caller's onboarding snapshot (1:1 on user_id). This holds only
+   * the raw inputs a returning user reviews — the derived targets and weight
+   * goal are written separately via putMyTargets / the weight module, so this
+   * never touches daily_summaries.
+   */
+  async putMyProfile(
+    userId: string,
+    input: PutMyProfileInput,
+  ): Promise<UserProfileDto> {
+    const values = {
+      goal: input.goal,
+      sex: input.sex,
+      dob: input.dob,
+      heightCm: input.heightCm,
+      weightKg: input.weightKg,
+      goalWeightKg: input.goalWeightKg ?? null,
+      activityLevel: input.activityLevel,
+      heightUnit: input.heightUnit,
+      planId: input.planId,
+      customWeeklyRateKg: input.customWeeklyRateKg ?? null,
+    };
+    const [row] = await this.db
+      .insert(userProfiles)
+      .values({ id: uuidv7(), userId, ...values })
+      .onConflictDoUpdate({
+        target: userProfiles.userId,
+        set: { ...values, updatedAt: new Date() },
+      })
+      .returning();
+    return toProfileDto(row);
   }
 }

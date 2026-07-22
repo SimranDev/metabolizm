@@ -5,7 +5,14 @@
  */
 
 import type { UserTargetDto } from "./groups";
-import type { WeightUnit } from "./health";
+import type {
+  ActivityLevel,
+  Goal,
+  HeightUnit,
+  PlanId,
+  Sex,
+  WeightUnit,
+} from "./health";
 
 export type MeDto = {
   id: string;
@@ -25,3 +32,26 @@ export type MeResponse = { user: MeDto };
  * `user_targets` table, so they deliberately share `UserTargetDto`.
  */
 export type MyTargetsResponse = { target: UserTargetDto };
+
+/**
+ * The caller's onboarding snapshot — the raw inputs a returning user reviews.
+ * `dob` is `YYYY-MM-DD`; `weightKg` is the as-onboarded value (ongoing weigh-ins
+ * live in weight_entries). Derived targets/weight-goal are NOT here — they have
+ * their own responses.
+ */
+export type UserProfileDto = {
+  goal: Goal;
+  sex: Sex;
+  dob: string;
+  heightCm: number;
+  weightKg: number;
+  goalWeightKg: number | null;
+  activityLevel: ActivityLevel;
+  heightUnit: HeightUnit;
+  planId: PlanId;
+  customWeeklyRateKg: number | null;
+  updatedAt: string;
+};
+
+/** `profile` is null when the account has no saved onboarding snapshot yet. */
+export type MyProfileResponse = { profile: UserProfileDto | null };

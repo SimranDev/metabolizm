@@ -1,11 +1,17 @@
-import type { MeResponse, MyTargetsResponse } from "@metabolizm/shared";
+import type {
+  MeResponse,
+  MyProfileResponse,
+  MyTargetsResponse,
+} from "@metabolizm/shared";
 import { Body, Controller, Get, Patch, Put } from "@nestjs/common";
 
 import { CallerContext } from "../common/caller-context";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import {
+  putMyProfileSchema,
   putMyTargetsSchema,
   updateMeSchema,
+  type PutMyProfileInput,
   type PutMyTargetsInput,
   type UpdateMeInput,
 } from "./users.schemas";
@@ -38,6 +44,25 @@ export class UsersController {
   ): Promise<MyTargetsResponse> {
     return {
       target: await this.usersService.putMyTargets(
+        this.caller.requireUserId(),
+        body,
+      ),
+    };
+  }
+
+  @Get("me/profile")
+  async myProfile(): Promise<MyProfileResponse> {
+    return {
+      profile: await this.usersService.myProfile(this.caller.requireUserId()),
+    };
+  }
+
+  @Put("me/profile")
+  async putMyProfile(
+    @Body(new ZodValidationPipe(putMyProfileSchema)) body: PutMyProfileInput,
+  ): Promise<MyProfileResponse> {
+    return {
+      profile: await this.usersService.putMyProfile(
         this.caller.requireUserId(),
         body,
       ),

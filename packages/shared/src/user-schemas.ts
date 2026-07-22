@@ -60,3 +60,54 @@ export const putMyTargetsSchema = z.object({
 });
 
 export type PutMyTargetsInput = z.output<typeof putMyTargetsSchema>;
+
+// The onboarding unions, as zod enums. Kept here (not health.ts, which is pure
+// types) so both api and mobile validate against one definition; the values
+// must stay in lockstep with the TS unions in health.ts and the pgEnums in
+// @metabolizm/db.
+export const sexSchema = z.enum(["male", "female", "other"]);
+export const goalSchema = z.enum([
+  "lose",
+  "gain-muscle",
+  "recomp",
+  "maintain",
+  "improve-health",
+]);
+export const activityLevelSchema = z.enum([
+  "sedentary",
+  "light",
+  "moderate",
+  "very",
+  "athlete",
+]);
+export const heightUnitSchema = z.enum(["cm", "ftin"]);
+export const planIdSchema = z.enum([
+  "relaxed",
+  "steady",
+  "accelerated",
+  "vigorous",
+  "lean",
+  "fast",
+  "custom",
+]);
+
+/**
+ * The caller's onboarding snapshot — the raw inputs, not the derived targets.
+ * Upserted 1:1 with the user. `dob` is a local `YYYY-MM-DD` (the client converts
+ * its stored ISO datetime with local components to dodge the UTC day-shift).
+ * `weightKg` is the as-onboarded weight; ongoing weigh-ins live in weight_entries.
+ */
+export const putMyProfileSchema = z.object({
+  goal: goalSchema,
+  sex: sexSchema,
+  dob: entryDateSchema,
+  heightCm: z.number().positive().max(300),
+  weightKg: z.number().min(20).max(500),
+  goalWeightKg: z.number().min(20).max(500).nullable().optional(),
+  activityLevel: activityLevelSchema,
+  heightUnit: heightUnitSchema,
+  planId: planIdSchema,
+  customWeeklyRateKg: z.number().min(-5).max(5).nullable().optional(),
+});
+
+export type PutMyProfileInput = z.output<typeof putMyProfileSchema>;

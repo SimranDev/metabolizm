@@ -6,4 +6,6 @@ export {
   type UpdateMeInput,
   putMyTargetsSchema,
   type PutMyTargetsInput,
+  putMyProfileSchema,
+  type PutMyProfileInput,
 } from "@metabolizm/shared";

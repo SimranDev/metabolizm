@@ -50,6 +50,13 @@
       "when": 1784536256623,
       "tag": "0006_weight",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784680717059,
+      "tag": "0007_user_profiles",
+      "breakpoints": true
     }
   ]
 }

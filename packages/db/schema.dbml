@@ -1,3 +1,11 @@
+enum activity_level {
+  sedentary
+  light
+  moderate
+  very
+  athlete
+}
+
 enum base_unit {
   g
   ml
@@ -6,6 +14,14 @@ enum base_unit {
 enum food_source {
   system
   custom
+}
+
+enum goal {
+  lose
+  "gain-muscle"
+  recomp
+  maintain
+  "improve-health"
 }
 
 enum group_category {
@@ -34,11 +50,22 @@ enum group_role {
   coach
 }
 
+enum height_unit {
+  cm
+  ftin
+}
+
 enum meal {
   breakfast
   lunch
   dinner
   snack
+}
+
+enum sex {
+  male
+  female
+  other
 }
 
 enum visibility {
@@ -252,6 +279,27 @@ table sessions {
   }
 }
 
+table user_profiles {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  goal goal [not null]
+  sex sex [not null]
+  dob date [not null]
+  height_cm "numeric(5, 1)" [not null]
+  weight_kg "numeric(6, 2)" [not null]
+  goal_weight_kg "numeric(6, 2)"
+  activity_level activity_level [not null]
+  height_unit height_unit [not null, default: 'cm']
+  plan_id text [not null]
+  custom_weekly_rate_kg "numeric(5, 3)"
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    user_id [name: 'user_profiles_user_id_uq', unique]
+  }
+}
+
 table user_targets {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   user_id uuid [not null]
@@ -359,6 +407,8 @@ ref group_members_user_id_users_id_fk: group_members.user_id > users.id [delete:
 ref groups_owner_id_users_id_fk: groups.owner_id > users.id [delete: restrict, update: no action]
 
 ref sessions_user_id_users_id_fk: sessions.user_id > users.id [delete: cascade, update: no action]
+
+ref user_profiles_user_id_users_id_fk: user_profiles.user_id > users.id [delete: cascade, update: no action]
 
 ref user_targets_user_id_users_id_fk: user_targets.user_id > users.id [delete: cascade, update: no action]
 

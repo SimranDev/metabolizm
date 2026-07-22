@@ -518,6 +518,70 @@ export const userTargets = pgTable(
   (t) => [index("user_targets_user_effective_idx").on(t.userId, t.effectiveFrom)],
 );
 
+// Onboarding inputs, matching the union types in @metabolizm/shared/health.
+// plan_id is left as text (a snapshot label that may gain new plans) rather
+// than an enum, so a new plan needs no migration.
+export const sexEnum = pgEnum("sex", ["male", "female", "other"]);
+export const goalEnum = pgEnum("goal", [
+  "lose",
+  "gain-muscle",
+  "recomp",
+  "maintain",
+  "improve-health",
+]);
+export const activityLevelEnum = pgEnum("activity_level", [
+  "sedentary",
+  "light",
+  "moderate",
+  "very",
+  "athlete",
+]);
+export const heightUnitEnum = pgEnum("height_unit", ["cm", "ftin"]);
+
+// The finalized onboarding snapshot, 1:1 with a user (unique user_id, upserted).
+// Holds the raw INPUTS a returning user reviews and edits; the derived outputs
+// live in their own tables (user_targets, user_weight_goals) and weight_unit on
+// users. weight_kg here is the as-onboarded value — ongoing weigh-ins are in
+// weight_entries and are not mirrored back.
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goal: goalEnum("goal").notNull(),
+    sex: sexEnum("sex").notNull(),
+    dob: date("dob", { mode: "string" }).notNull(),
+    heightCm: numeric("height_cm", {
+      precision: 5,
+      scale: 1,
+      mode: "number",
+    }).notNull(),
+    weightKg: numeric("weight_kg", {
+      precision: 6,
+      scale: 2,
+      mode: "number",
+    }).notNull(),
+    goalWeightKg: numeric("goal_weight_kg", { precision: 6, scale: 2, mode: "number" }),
+    activityLevel: activityLevelEnum("activity_level").notNull(),
+    heightUnit: heightUnitEnum("height_unit").notNull().default("cm"),
+    planId: text("plan_id").notNull(),
+    customWeeklyRateKg: numeric("custom_weekly_rate_kg", {
+      precision: 5,
+      scale: 3,
+      mode: "number",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("user_profiles_user_id_uq").on(t.userId)],
+);
+
 // Append-only weigh-in log. Several entries a day are normal (morning, then
 // post-workout), so the day's canonical value is a *pick* rather than the row
 // itself — see DAY_WEIGHT_RULE in apps/api/src/weight/compute.ts, which also
