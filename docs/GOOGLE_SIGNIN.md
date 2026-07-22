@@ -41,10 +41,16 @@ keytool -list -v -keystore apps/mobile/android/app/debug.keystore \
   -alias androiddebugkey -storepass android -keypass android | grep SHA1
 ```
 
-> For a Play Store release build the app is signed by a **different** (EAS or
-> Play App Signing) keystore, so a second Android OAuth client with that
-> release SHA-1 is needed before production. That belongs with EAS setup
-> (Phase 4), not here.
+> An EAS or Play-App-Signing build is signed by a **different** keystore, so it
+> needs its own Android OAuth client registered against that release SHA-1 —
+> otherwise the native SDK returns `DEVELOPER_ERROR`. Keep this debug client as
+> well; an app can have one Android OAuth client per signing key. The steps live
+> in [DEPLOYMENT.md §3](DEPLOYMENT.md#3-google-sign-in-for-the-eas-keystore),
+> and can only be run *after* the first EAS build has generated the keystore:
+>
+> ```
+> npx eas-cli@latest credentials -p android    # read the release SHA-1
+> ```
 
 ## Step 1 — Google Cloud console (your part)
 
