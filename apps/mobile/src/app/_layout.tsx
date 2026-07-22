@@ -96,6 +96,9 @@ export default function RootLayout() {
             <Stack.Screen name="create-group" />
             <Stack.Screen name="join-group" />
             <Stack.Screen name="group-sharing" options={{ presentation: 'modal' }} />
+            {/* Profile & settings — reached from the AppHeader's profile
+                button, not a tab: the tab bar is for what you open daily. */}
+            <Stack.Screen name="profile" />
             {/* The calendar. A native form sheet, so the OS owns the drag,
                 detents and dismiss — no bottom-sheet library in the bundle. */}
             <Stack.Screen

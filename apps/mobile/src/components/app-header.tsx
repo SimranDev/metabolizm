@@ -111,9 +111,10 @@ function DateSwitcher() {
 }
 
 /**
- * Profile button placeholder. Leads to profile settings — for now the Profile
- * tab. Will show the user's avatar image, and is where the subscription tier
- * treatment lands now that the plan icon has given up the left slot.
+ * The only way into profile & settings, now that it has no tab: pushes
+ * `/profile` at the root stack, above the tab group. Will show the user's
+ * avatar image, and is where the subscription tier treatment lands now that
+ * the plan icon has given up the left slot.
  */
 function ProfileButton() {
   const { colors } = useTheme();

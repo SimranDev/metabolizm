@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
-import { PlaceholderScreen } from '@/components/placeholder-screen';
 import { GoalWeightCard } from '@/components/profile/goal-weight-card';
 import { TargetsCard } from '@/components/profile/targets-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { endSession } from '@/lib/session';
 import { useProfile } from '@/store/profile';
 import { useWeight } from '@/store/weight';
-import { BottomTabInset, Spacing } from '@/theme';
+import { Spacing } from '@/theme';
 
 /**
  * Profile & settings.
@@ -19,16 +19,16 @@ import { BottomTabInset, Spacing } from '@/theme';
  * Where the numbers agreed during onboarding become editable, and the only way
  * out of the account — via `lib/session`, which wipes every account-scoped
  * store rather than just dropping the cookie.
+ *
+ * Pushes at the ROOT stack from the AppHeader's profile button rather than
+ * owning a tab: it is the lowest-frequency destination in the app, and the tab
+ * bar is for the surfaces you come back to every day. Like the groups and
+ * weight drill-downs it therefore carries its own ScreenHeader.
  */
 export default function ProfileScreen() {
   const profile = useProfile((s) => s.profile);
   const unit = useWeight((s) => s.unit);
   const [signingOut, setSigningOut] = useState(false);
-
-  // Unreachable in practice (the root gate requires onboarding), but fail safe.
-  if (!profile) {
-    return <PlaceholderScreen title="Profile" />;
-  }
 
   const confirmSignOut = () => {
     Alert.alert(
@@ -52,30 +52,36 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Card style={styles.account}>
-          <ThemedText type="micro" themeColor="textSecondary">
-            SIGNED IN AS
-          </ThemedText>
-          <ThemedText type="h3">{profile.email}</ThemedText>
-        </Card>
+      <ScreenHeader title="Profile" />
 
-        <TargetsCard profile={profile} />
+      {/* Unreachable in practice (the root gate requires onboarding), but the
+          header above still gives a way back if it ever renders. */}
+      {!profile ? null : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Card style={styles.account}>
+            <ThemedText type="micro" themeColor="textSecondary">
+              SIGNED IN AS
+            </ThemedText>
+            <ThemedText type="h3">{profile.email}</ThemedText>
+          </Card>
 
-        {/* The unit toggle lives inside this card's WeightField and is the
-            app-wide preference, so there is no separate units row. */}
-        <GoalWeightCard profile={profile} unit={unit} />
+          <TargetsCard profile={profile} />
 
-        <View style={styles.danger}>
-          <Button
-            label={signingOut ? 'Signing out…' : 'Sign out'}
-            variant="ghost"
-            onPress={confirmSignOut}
-            disabled={signingOut}
-            fullWidth
-          />
-        </View>
-      </ScrollView>
+          {/* The unit toggle lives inside this card's WeightField and is the
+              app-wide preference, so there is no separate units row. */}
+          <GoalWeightCard profile={profile} unit={unit} />
+
+          <View style={styles.danger}>
+            <Button
+              label={signingOut ? 'Signing out…' : 'Sign out'}
+              variant="ghost"
+              onPress={confirmSignOut}
+              disabled={signingOut}
+              fullWidth
+            />
+          </View>
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }
@@ -84,7 +90,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
     padding: Spacing.s16,
-    paddingBottom: BottomTabInset + Spacing.s24,
+    paddingBottom: Spacing.s48,
     gap: Spacing.s16,
   },
   account: { gap: Spacing.s4 },

@@ -37,10 +37,8 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="person.crop.circle.fill" md="person" />
-      </NativeTabs.Trigger>
+      {/* No Profile tab: it pushes at the root stack from the AppHeader's
+          profile button instead. See src/app/profile.tsx. */}
     </NativeTabs>
   );
 }
