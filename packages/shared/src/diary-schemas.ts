@@ -14,13 +14,47 @@ export const entryDateSchema = z
 
 export const mealIdSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
 
+/** How far ahead a diary entry may be dated — the "plan a future day" window. */
+export const DIARY_MAX_FUTURE_DAYS = 30;
+
+/**
+ * Server-side slop on top of DIARY_MAX_FUTURE_DAYS. The bound below compares
+ * against UTC today, while the client checks against the user's own local
+ * today, which can sit ~14h either side of it — so a legitimate day-30 log at
+ * UTC+14 must not 400. Two days covers the whole spread with room to spare.
+ */
+const FUTURE_SLOP_DAYS = 2;
+
+/** Nothing sensible predates the app; this only catches a garbage date. */
+const PAST_LIMIT_DAYS = 3650;
+
+/** UTC calendar day `days` from now. ISO dates compare lexicographically. */
+const utcDayFromNow = (days: number): string =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * An entry date that may actually be WRITTEN, as opposed to merely read.
+ *
+ * Reads stay on the unbounded `entryDateSchema`: a history query legitimately
+ * spans years. Writes are bounded because an entry dated 2099 is never a real
+ * log, and one bad row would sit at the top of every `max(entry_date)` and
+ * planned-day read forever.
+ */
+export const loggableEntryDateSchema = entryDateSchema
+  .refine((d) => d <= utcDayFromNow(DIARY_MAX_FUTURE_DAYS + FUTURE_SLOP_DAYS), {
+    message: `Entry date must be at most ${DIARY_MAX_FUTURE_DAYS} days ahead`,
+  })
+  .refine((d) => d >= utcDayFromNow(-PAST_LIMIT_DAYS), {
+    message: "Entry date is too far in the past",
+  });
+
 // Numeric caps mirror the DB column types (numeric(8,2) / numeric(8,3) /
 // numeric(10,3)) so out-of-range values 400 here instead of 500 in Postgres.
 
 export const diaryEntryUpsertSchema = z.object({
   /** Client-generated UUIDv7; pushing the same entry twice is an idempotent upsert. */
   id: z.uuid(),
-  entryDate: entryDateSchema,
+  entryDate: loggableEntryDateSchema,
   meal: mealIdSchema,
   foodId: z.uuid().nullable().optional(),
   name: z.string().trim().min(1).max(200),

@@ -8,6 +8,8 @@ export * from "./catalog-schemas";
 export * from "./diary-schemas";
 export * from "./groups";
 export * from "./groups-schemas";
+export * from "./summaries";
+export * from "./summaries-schemas";
 export * from "./user";
 export * from "./user-schemas";
 export * from "./weight";

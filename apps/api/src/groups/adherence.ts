@@ -4,7 +4,13 @@
  * a target changes). Everything here returns booleans, fractions, and day
  * counts; absolute kcal/gram numbers never leave this module's inputs.
  */
-import type { GroupAdherenceFlags, GroupShareConfig } from "@metabolizm/shared";
+import {
+  CALORIE_BAND,
+  CAP_BAND,
+  PROTEIN_FLOOR,
+  type GroupAdherenceFlags,
+  type GroupShareConfig,
+} from "@metabolizm/shared";
 
 import { addDays } from "./dates";
 
@@ -24,11 +30,9 @@ export type DaySummaryFacts = {
   weightKg: number | null;
 };
 
-// Hit/missed thresholds. Calories count within ±10% of target; protein is a
-// floor (≥90%); carbs/fat are caps (≤110%).
-const CALORIE_BAND = 0.1;
-const PROTEIN_FLOOR = 0.9;
-const CAP_BAND = 1.1;
+// Hit/missed thresholds (calories within ±10% of target; protein a floor;
+// carbs/fat caps) live in @metabolizm/shared so the client's day colouring
+// scores a day exactly the way this does.
 
 /**
  * Booleans-only view of a day vs its snapshotted targets. A check is `null`
