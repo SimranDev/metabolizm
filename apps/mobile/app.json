@@ -57,21 +57,29 @@
               "name": "CaloriePace",
               "displayName": "Calories · Day pace",
               "description": "Calories remaining and your pace through the day.",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
               "contentMarginsDisabled": false
             },
             {
               "name": "MacroBars",
               "displayName": "Macros",
               "description": "Today's carbs, fat and protein progress.",
-              "supportedFamilies": ["systemSmall", "systemMedium"],
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
               "contentMarginsDisabled": false
             },
             {
               "name": "PlateRing",
               "displayName": "Plate",
               "description": "Calories left on your plate with the macro split.",
-              "supportedFamilies": ["systemSmall"],
+              "supportedFamilies": [
+                "systemSmall"
+              ],
               "contentMarginsDisabled": false
             }
           ]
@@ -121,6 +129,30 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "com.metabolizm.app.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.metabolizm.app"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "ee145436-9700-49c4-b59c-cbeefa75f747"
+      }
+    },
+    "owner": "simarexpo"
   }
 }
