@@ -9,7 +9,10 @@ import { ThemedText } from '@/components/themed-text';
 import { usersApi } from '@/lib/api';
 import { signIn } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
+import { answersFromProfile } from '@/lib/onboarding-metrics';
+import { useOnboarding } from '@/store/onboarding';
 import { useProfile } from '@/store/profile';
+import { useWeight } from '@/store/weight';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -18,19 +21,31 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const onSignedIn = () => {
+  // Only existing accounts reach here (the server rejects unknown social
+  // logins). Restore their saved profile and let them review it instead of
+  // re-onboarding; a legacy account with no server profile is sent to setup.
+  const onSignedIn = async () => {
     haptics.success();
     // A session exists now, so this is the first call that can actually land.
     usersApi.pushDeviceTimezone();
-    // TODO(server-profile): fetch the user's saved profile from the backend
-    // and skip onboarding once the endpoint exists. Locally, restore a
-    // profile if this device has one, otherwise send them through setup.
-    const existing = useProfile.getState().profile;
-    if (existing) {
-      useProfile.getState().completeOnboarding(existing);
-    } else {
-      router.replace('/goal');
+    try {
+      const { profile } = await usersApi.getMyProfile();
+      if (profile) {
+        useOnboarding.getState().set(answersFromProfile(profile, useWeight.getState().unit));
+        router.replace('/review');
+        return;
+      }
+    } catch {
+      // Offline or the fetch failed — fall back to a device-local profile if
+      // this phone has one, so a returning user isn't blocked from their app.
+      const local = useProfile.getState().profile;
+      if (local) {
+        useProfile.getState().completeOnboarding(local);
+        return;
+      }
     }
+    // No saved profile (a pre-feature account) — send them through onboarding.
+    router.replace('/goal');
   };
 
   const onSubmit = async () => {
@@ -38,7 +53,7 @@ export default function SignInScreen() {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      onSignedIn();
+      await onSignedIn();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
       setSubmitting(false);

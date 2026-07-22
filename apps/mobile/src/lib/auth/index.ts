@@ -39,6 +39,15 @@ function authError(
   error: { code?: string; message?: string } | null,
   fallback: string,
 ): Error {
+  // Sign-in with a provider account that has no Metabolizm account: the server
+  // refuses to create one on the sign-in path (disableImplicitSignUp). Matched
+  // by message too — the idToken social flow surfaces this without the
+  // SIGN_UP_DISABLED code on the client error.
+  if (error?.code === 'SIGN_UP_DISABLED' || /sign\s?up disabled/i.test(error?.message ?? '')) {
+    return new Error(
+      "No Metabolizm account yet for that login. Go back and tap Get started to sign up.",
+    );
+  }
   switch (error?.code) {
     case 'USER_ALREADY_EXISTS':
       return new Error('An account with this email already exists.');
@@ -52,6 +61,9 @@ function authError(
       return new Error(error?.message || fallback);
   }
 }
+
+/** Whether an option object requests account creation (the sign-up path). */
+type SocialOptions = { allowSignUp?: boolean };
 
 export async function signUp(email: string, password: string): Promise<AuthUser> {
   validate(email, password);
@@ -78,7 +90,7 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
 }
 
 /** iOS only. Resolves to null when the user cancels the Apple sheet. */
-export async function signInWithApple(): Promise<AuthUser | null> {
+export async function signInWithApple(opts?: SocialOptions): Promise<AuthUser | null> {
   if (Platform.OS !== 'ios') {
     throw new Error('Apple sign-in is only available on iOS.');
   }
@@ -109,6 +121,9 @@ export async function signInWithApple(): Promise<AuthUser | null> {
   const { data, error } = await authClient.signIn.social({
     provider: 'apple',
     idToken: { token: credential.identityToken, nonce: rawNonce },
+    // Only the sign-up screen allows creating an account; the sign-in screen
+    // omits this so an unknown Apple id is rejected (SIGN_UP_DISABLED).
+    requestSignUp: opts?.allowSignUp ?? false,
   });
   if (error || !data) throw authError(error, 'Apple sign-in failed. Please try again.');
   // Apple sends fullName only in the FIRST credential (never in the identity
@@ -127,7 +142,7 @@ export async function signInWithApple(): Promise<AuthUser | null> {
 let googleConfigured = false;
 
 /** Resolves to null when the user dismisses the Google sheet. */
-export async function signInWithGoogle(): Promise<AuthUser | null> {
+export async function signInWithGoogle(opts?: SocialOptions): Promise<AuthUser | null> {
   // EXPO_PUBLIC_ accesses must stay literal member expressions (inlined at
   // bundle time). Missing config degrades to a clear error, not a crash.
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
@@ -160,6 +175,9 @@ export async function signInWithGoogle(): Promise<AuthUser | null> {
   const { data, error } = await authClient.signIn.social({
     provider: 'google',
     idToken: { token: idToken },
+    // Only the sign-up screen allows creating an account; the sign-in screen
+    // omits this so an unknown Google id is rejected (SIGN_UP_DISABLED).
+    requestSignUp: opts?.allowSignUp ?? false,
   });
   if (error || !data) throw authError(error, 'Google sign-in failed. Please try again.');
   return sessionUser();

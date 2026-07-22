@@ -54,6 +54,11 @@ export function createAuth(db: Database, config: ConfigService<Env, true>) {
               appBundleIdentifier: config.get("APPLE_APP_BUNDLE_IDENTIFIER", {
                 infer: true,
               }),
+              // Sign-in must not silently create an account. The Sign-in screen
+              // calls without requestSignUp, so an unknown user is rejected;
+              // only the Sign-up screen (post-onboarding) passes requestSignUp
+              // true and creates the account.
+              disableImplicitSignUp: true,
             },
           }
         : null),
@@ -65,6 +70,8 @@ export function createAuth(db: Database, config: ConfigService<Env, true>) {
               clientId: googleClientId,
               clientSecret:
                 config.get("GOOGLE_CLIENT_SECRET", { infer: true }) ?? "",
+              // See the apple note above: no implicit account creation on sign-in.
+              disableImplicitSignUp: true,
             },
           }
         : null),

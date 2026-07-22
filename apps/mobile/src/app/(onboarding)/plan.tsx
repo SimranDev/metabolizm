@@ -16,6 +16,8 @@ import {
   maintenanceCalories,
 } from '@/lib/health';
 import type { Plan, PlanId } from '@metabolizm/shared';
+import { getToken } from '@/lib/auth';
+import { finalizeOnboarding } from '@/lib/onboarding-finalize';
 import { buildMetrics } from '@/lib/onboarding-metrics';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';
@@ -71,12 +73,19 @@ export default function PlanScreen() {
       ? buildCustomPlan(metrics, customRate)
       : (presets.find((p) => p.id === selectedId) ?? presets[0]);
 
-  const onContinue = () => {
+  const onContinue = async () => {
     answers.set({
       selectedPlanId: selectedPlan.id,
       customWeeklyRateKg: selectedPlan.id === 'custom' ? customRate : undefined,
     });
-    router.push('/sign-up');
+    // A returning user editing their details is already signed in — finalize
+    // and enter the app rather than sending them to create another account.
+    // A first-time user has no session, so they go on to sign-up.
+    if (await getToken()) {
+      await finalizeOnboarding(useOnboarding.getState());
+    } else {
+      router.push('/sign-up');
+    }
   };
 
   return (

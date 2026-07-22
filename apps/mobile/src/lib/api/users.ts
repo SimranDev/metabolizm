@@ -9,7 +9,9 @@
 
 import type {
   MeResponse,
+  MyProfileResponse,
   MyTargetsResponse,
+  PutMyProfileInput,
   PutMyTargetsInput,
   WeightUnit,
 } from "@metabolizm/shared";
@@ -42,6 +44,26 @@ export function putMyTargets(
   opts?: Signal,
 ): Promise<MyTargetsResponse> {
   return apiRequest("/users/me/targets", { method: "PUT", body: input, ...opts });
+}
+
+/**
+ * The caller's onboarding snapshot (raw inputs), or null when none is saved.
+ * Read on sign-in to decide between the review screen and full onboarding.
+ */
+export function getMyProfile(opts?: Signal): Promise<MyProfileResponse> {
+  return apiRequest("/users/me/profile", opts);
+}
+
+/**
+ * Upsert the caller's onboarding snapshot (1:1 with the account). Written at
+ * onboarding completion so a returning user — on any device — can review and
+ * edit what they entered instead of starting over.
+ */
+export function putMyProfile(
+  input: PutMyProfileInput,
+  opts?: Signal,
+): Promise<MyProfileResponse> {
+  return apiRequest("/users/me/profile", { method: "PUT", body: input, ...opts });
 }
 
 /** The device's IANA zone, e.g. "America/Los_Angeles". */

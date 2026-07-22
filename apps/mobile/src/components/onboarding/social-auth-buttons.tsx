@@ -39,6 +39,10 @@ export function SocialAuthButtons({ mode, busy, onStart, onSuccess, onCancel, on
     };
   }, []);
 
+  // Only the sign-up screen may create an account; the sign-in screen rejects
+  // an unknown provider account (see disableImplicitSignUp on the server).
+  const allowSignUp = mode === 'sign-up';
+
   const run = async (provider: () => Promise<AuthUser | null>) => {
     if (busy) return;
     onStart();
@@ -70,7 +74,7 @@ export function SocialAuthButtons({ mode, busy, onStart, onSuccess, onCancel, on
           }
           cornerRadius={Radius.md}
           style={styles.appleButton}
-          onPress={() => run(signInWithApple)}
+          onPress={() => run(() => signInWithApple({ allowSignUp }))}
         />
       ) : null}
       <Button
@@ -82,7 +86,7 @@ export function SocialAuthButtons({ mode, busy, onStart, onSuccess, onCancel, on
         icon={() => (
           <Image source={require('@/assets/images/google-g.png')} style={styles.googleMark} />
         )}
-        onPress={() => run(signInWithGoogle)}
+        onPress={() => run(() => signInWithGoogle({ allowSignUp }))}
       />
       <View style={styles.divider}>
         <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
