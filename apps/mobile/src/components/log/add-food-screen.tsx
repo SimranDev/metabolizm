@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { MIN_QUERY_LENGTH, useFoodSearch } from "@/hooks/use-food-search";
+import { dayKey, formatShortDate } from "@/lib/dates";
 import { toQuickAdd } from "@/lib/food";
 import { toMealId, useDiary } from "@/store/diary";
 import { useFoodSelection } from "@/store/food-selection";
@@ -43,6 +44,11 @@ export function AddFoodScreen({ meal }: Props) {
   const label = mealLabel(meal);
 
   const addEntries = useDiary((s) => s.addEntries);
+  // The entry lands on whichever day the Log tab has selected, so name it
+  // unless it is today — a food silently filed three weeks out is worse than
+  // a redundant date.
+  const currentDate = useDiary((s) => s.currentDate);
+  const targetDay = currentDate === dayKey() ? null : formatShortDate(currentDate);
   // Session snapshot, not a live subscription: "Add" reorders the persisted
   // recents (selected foods move to the front), and re-rendering the keyed rows
   // with a permuted order while the modal dismisses crashes Android's Fabric
@@ -80,7 +86,13 @@ export function AddFoodScreen({ meal }: Props) {
 
   return (
     <ThemedView style={styles.container}>
-      <Header meal={label} onBack={() => router.back()} onClose={() => router.back()} insetTop={insets.top} />
+      <Header
+        meal={label}
+        day={targetDay}
+        onBack={() => router.back()}
+        onClose={() => router.back()}
+        insetTop={insets.top}
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -179,11 +191,14 @@ export function AddFoodScreen({ meal }: Props) {
 
 function Header({
   meal,
+  day,
   onBack,
   onClose,
   insetTop,
 }: {
   meal: string;
+  /** Formatted destination day, or null when it is today. */
+  day: string | null;
   onBack: () => void;
   onClose: () => void;
   insetTop: number;
@@ -207,9 +222,18 @@ function Header({
       {/* Just the destination meal. It announced itself as "Change meal" and
           carried a chevron while having no `onPress` at all — a button that
           does nothing. Restore the Pressable and the chevron together with the
-          picker; until then the meal comes from the route param. */}
+          picker; until then the meal comes from the route param.
+
+          The day is spelled out whenever it isn't today: the entry is written
+          to whichever day the Log tab has selected, and someone three weeks
+          into the future has no other cue that they aren't logging lunch. */}
       <View style={styles.titleButton}>
         <ThemedText type="h3">{meal}</ThemedText>
+        {day !== null && (
+          <ThemedText type="micro" themeColor="textSecondary" tabular>
+            {day}
+          </ThemedText>
+        )}
       </View>
 
       <View style={[styles.headerSide, styles.headerSideRight]}>

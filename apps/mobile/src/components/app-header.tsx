@@ -1,18 +1,28 @@
-import { Link } from 'expo-router';
+import { FontAwesomeFreeSolid } from '@react-native-vector-icons/fontawesome-free-solid';
+import { Link, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 import { Badge } from './ui/badge';
 
-import { Radius, Spacing, useTheme } from '@/theme';
+import { dayKey, formatMediumDate, formatWeekday } from '@/lib/dates';
+import { combineStreak, localStreak, useDiary } from '@/store/diary';
+import { refreshStreak, useSummaries } from '@/store/summaries';
+import { Spacing, useTheme } from '@/theme';
 
 const ICON_SIZE = 40;
 
 /**
  * Persistent top bar shared across every tab. Rendered above the tabs in the
  * root layout (native tabs don't provide a header).
+ *
+ * The week strip deliberately does NOT live here — it belongs to the Log tab,
+ * where a selected day means something. What stays global is the streak, the
+ * day being viewed, and the way into the calendar.
  */
 export function AppHeader() {
   const insets = useSafeAreaInsets();
@@ -25,7 +35,7 @@ export function AppHeader() {
         { paddingTop: insets.top + Spacing.s8, borderBottomColor: colors.border },
       ]}>
       <View style={styles.side}>
-        <PlanIcon />
+        <StreakPill />
       </View>
       <View style={styles.center}>
         <DateSwitcher />
@@ -38,44 +48,72 @@ export function AppHeader() {
 }
 
 /**
- * App icon placeholder. Will switch icon / treatment by subscription tier
- * (free / pro / pro max).
+ * Consecutive days with food logged.
+ *
+ * Derived from local entries, so it is correct and instant with no request. The
+ * server is asked only when the local run reaches the edge of the retained
+ * window and the real streak is therefore longer than the device can see —
+ * which for most accounts is never.
  */
-function PlanIcon() {
-  const { colors } = useTheme();
+function StreakPill() {
+  const entriesByDate = useDiary((s) => s.entriesByDate);
+  const serverStreak = useSummaries((s) => s.streak);
+
+  const local = localStreak(entriesByDate, dayKey());
+  const streak = combineStreak(local, serverStreak);
+
+  useEffect(() => {
+    if (local.truncated) refreshStreak();
+  }, [local.truncated]);
+
+  // Nothing to celebrate yet, and a "0" pill would read as a scolding.
+  if (streak === 0) return <View style={styles.iconBox} />;
+
   return (
-    <ThemedView type="surfaceSunken" style={styles.iconBox}>
-      <SymbolView
-        name={{ ios: 'bolt.fill', android: 'bolt' }}
-        size={22}
-        tintColor={colors.textSecondary}
-        fallback={<View />}
-      />
-    </ThemedView>
+    <Badge
+      label={String(streak)}
+      variant="accent"
+      icon={(color) => <FontAwesomeFreeSolid name="fire" size={13} color={color} />}
+    />
   );
 }
 
 /**
- * Today's date.
+ * The day the app is showing, and the way into the calendar.
  *
- * Deliberately inert — no `Pressable`, no chevron — until day-switching is
- * actually built. It previously rendered a pressable with `onPress={() => {}}`
- * and a `chevron.down`, which reads as a working day picker and does nothing.
- * Add both back together with the calendar control.
+ * Shows "Today" for the current day and the weekday name otherwise, with the
+ * full date underneath — a bare "Wed, Jul 22" gives no clue you have navigated
+ * away from today, which is the one thing this control has to make obvious.
  */
 function DateSwitcher() {
-  const label = new Date().toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  const { colors } = useTheme();
+  const router = useRouter();
+  const currentDate = useDiary((s) => s.currentDate);
+  const isToday = currentDate === dayKey();
 
-  return <Badge label={label} />;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Showing ${formatMediumDate(currentDate)}. Open calendar`}
+      onPress={() => router.push('/day-picker')}
+      style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}>
+      <View style={styles.dateRow}>
+        <ThemedText type="h3" themeColor="inkStrong">
+          {isToday ? 'Today' : formatWeekday(currentDate)}
+        </ThemedText>
+        <FontAwesomeFreeSolid name="chevron-down" size={12} color={colors.inkStrong} />
+      </View>
+      <ThemedText type="micro" themeColor="textSecondary" tabular>
+        {formatMediumDate(currentDate)}
+      </ThemedText>
+    </Pressable>
+  );
 }
 
 /**
  * Profile button placeholder. Leads to profile settings — for now the Profile
- * tab. Will show the user's avatar image.
+ * tab. Will show the user's avatar image, and is where the subscription tier
+ * treatment lands now that the plan icon has given up the left slot.
  */
 function ProfileButton() {
   const { colors } = useTheme();
@@ -107,7 +145,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   side: {
-    width: ICON_SIZE,
+    // Wide enough for a three-digit streak without shifting the centred date.
+    minWidth: 56,
   },
   sideRight: {
     alignItems: 'flex-end',
@@ -119,9 +158,14 @@ const styles = StyleSheet.create({
   iconBox: {
     width: ICON_SIZE,
     height: ICON_SIZE,
-    borderRadius: Radius.lg,
+  },
+  dateButton: {
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.s4,
   },
   avatar: {
     width: ICON_SIZE,

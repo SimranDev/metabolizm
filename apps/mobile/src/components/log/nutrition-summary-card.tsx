@@ -13,16 +13,28 @@ type Props = {
   targetCalories: number;
   consumedCalories: number;
   consumedMacros: Macros;
+  /**
+   * The selected day is in the future. Nothing has been eaten yet, so the same
+   * number means something different: it is a budget to fill, not one to spend
+   * down. Saying "remaining" on a day that hasn't happened reads as a miss.
+   */
+  planning?: boolean;
 };
 
 /**
- * Today's nutrition summary, kept deliberately compact: hero "remaining
- * calories" stat, a macro-segmented main bar, and a single row of consumed
- * grams per macro. Macro *targets* are intentionally not shown.
+ * The selected day's nutrition summary, kept deliberately compact: hero
+ * "remaining calories" stat, a macro-segmented main bar, and a single row of
+ * consumed grams per macro. Macro *targets* are intentionally not shown.
  */
-export function NutritionSummaryCard({ targetCalories, consumedCalories, consumedMacros }: Props) {
+export function NutritionSummaryCard({
+  targetCalories,
+  consumedCalories,
+  consumedMacros,
+  planning = false,
+}: Props) {
   const remaining = Math.round(targetCalories - consumedCalories);
   const over = remaining < 0;
+  const suffix = over ? ' over budget' : planning ? ' kcal to plan' : ' remaining';
 
   return (
     <Card style={styles.card}>
@@ -42,7 +54,7 @@ export function NutritionSummaryCard({ targetCalories, consumedCalories, consume
       <View style={styles.heroRow}>
         <StatNumber
           value={over ? `+${Math.abs(remaining).toLocaleString()}` : remaining.toLocaleString()}
-          suffix={over ? " over budget" : " remaining"}
+          suffix={suffix}
           size="xl"
           color={over ? "dangerText" : "inkStrong"}
         />

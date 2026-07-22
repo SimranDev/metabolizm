@@ -22,6 +22,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { usersApi } from '@/lib/api';
+import { initDayRollover } from '@/store/diary';
 import { useProfile, useProfileHydrated } from '@/store/profile';
 import { ThemeProvider, useTheme } from '@/theme';
 import { initWidgetSync } from '@/widgets/sync';
@@ -54,6 +55,10 @@ export default function RootLayout() {
   useEffect(() => {
     initWidgetSync();
   }, []);
+
+  // Follow midnight while the app is backgrounded, so an app resumed the next
+  // morning isn't still showing (and logging into) yesterday.
+  useEffect(() => initDayRollover(), []);
 
   // The server defaults users.timezone to UTC and this is its only writer, yet
   // entry dates, logging streaks and every group's notion of "today" pivot on
@@ -91,6 +96,17 @@ export default function RootLayout() {
             <Stack.Screen name="create-group" />
             <Stack.Screen name="join-group" />
             <Stack.Screen name="group-sharing" options={{ presentation: 'modal' }} />
+            {/* The calendar. A native form sheet, so the OS owns the drag,
+                detents and dismiss — no bottom-sheet library in the bundle. */}
+            <Stack.Screen
+              name="day-picker"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: [0.75],
+                sheetGrabberVisible: true,
+                contentStyle: { backgroundColor: 'transparent' },
+              }}
+            />
             {/* Weight drill-downs, same reasoning as the groups ones. */}
             <Stack.Screen name="weight/index" />
             <Stack.Screen name="weight/history" />
