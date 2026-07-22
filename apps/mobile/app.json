@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "metabolizm-rn",
-    "slug": "metabolizm-rn",
+    "name": "Metabolizm",
+    "slug": "metabolizm",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.anonymous.metabolizmrn",
+      "bundleIdentifier": "com.metabolizm.app",
       "usesAppleSignIn": true
     },
     "android": {
@@ -20,13 +20,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.metabolizmrn"
+      "package": "com.metabolizm.app"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/with-workmanager-fix",
       "expo-router",
       [
         "expo-splash-screen",
