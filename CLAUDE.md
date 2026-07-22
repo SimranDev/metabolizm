@@ -34,7 +34,7 @@ Expo APIs changed significantly in SDK 57 — consult https://docs.expo.dev/vers
 
 ## Commands
 
-Run from the repo root (proxy scripts into the workspace packages). Full runbook incl. database workflows and troubleshooting: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Run from the repo root (proxy scripts into the workspace packages). Full runbook incl. database workflows and troubleshooting: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Shipping to a hosted backend and a physical device (Railway + EAS Build): [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — note that `EXPO_PUBLIC_*` is inlined at **build** time and lives in [apps/mobile/eas.json](apps/mobile/eas.json), not `.env`, because EAS archives the git tree and `.env` is gitignored; and that a release build blocks cleartext HTTP (`usesCleartextTraffic` is set only in the *debug* manifest), so `EXPO_PUBLIC_API_URL` must be `https://`.
 
 - `pnpm ios` / `pnpm android` — build & run a dev build (`expo run:*`). Native modules (native tabs, `expo-symbols`) require a dev build, not Expo Go.
 - `pnpm start` — start the Metro dev server (press `i`/`a` to open iOS/Android)

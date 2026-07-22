@@ -7,6 +7,11 @@
 apps/mobile/ios
 apps/mobile/android
 
+# USDA bulk-import inputs (~217MB): admin-tool only, never built into the image.
+# Gitignored too, so a git-based deploy never sees them — this is for local
+# `docker build`, which would otherwise send them to the daemon as context.
+apps/admin/data
+
 # Repo/local tooling
 .git
 .claude

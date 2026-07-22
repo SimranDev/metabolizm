@@ -37,7 +37,7 @@ Water intake · weight & body-measurement trends with charts · TDEE/BMR calcula
 
 ## Getting started
 
-Full runbook (daily commands, database workflows, Docker, troubleshooting): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+Full runbook (daily commands, database workflows, Docker, troubleshooting): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Deploying the backend and installing on a physical device: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ```bash
 pnpm install
