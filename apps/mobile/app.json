@@ -8,16 +8,19 @@
     "scheme": "metabolizmrn",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": {
+        "light": "./assets/images/icon.png",
+        "dark": "./assets/images/icon-dark.png",
+        "tinted": "./assets/images/icon-tinted.png"
+      },
       "bundleIdentifier": "com.metabolizm.app",
       "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FAFBF9",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#CEED52",
+        "foregroundImage": "./assets/images/adaptive-foreground.png",
+        "monochromeImage": "./assets/images/adaptive-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.metabolizm.app"
@@ -33,10 +36,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1C5279",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76,
+          "backgroundColor": "#FAFBF9",
+          "image": "./assets/images/splash-icon-light.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
           "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
             "backgroundColor": "#0C1211"
           }
         }
@@ -44,6 +49,13 @@
       "expo-status-bar",
       "expo-secure-store",
       "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2B4E72"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {

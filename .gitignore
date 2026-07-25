@@ -45,3 +45,7 @@ example
 
 # USDA FoodData Central downloads (bulk import inputs; up to ~211MB)
 /apps/admin/data/
+
+# Dev-only icon pipeline: standalone sharp install + generated assets (not shipped;
+# outputs are copied into apps/mobile/assets/images and committed from there)
+/tools/
