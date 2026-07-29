@@ -30,6 +30,8 @@ pnpm ios                                  # or: pnpm android — dev build on si
 | `docker compose up -d` | Start dev postgres (data persists in a named volume) |
 | `docker compose stop` | Stop postgres, keep container and data |
 | `docker compose down` | Remove the container, keep the data volume |
+| `pnpm db:studio` | Drizzle Studio at <https://local.drizzle.studio> — browse and edit every table (needs postgres up; see §3) |
+| `pnpm db:migrate` | Apply any unapplied migrations to the dev database (see §3) |
 | `pnpm start` | Metro dev server on :8081 (press `i`/`a` to open iOS/Android) |
 | `pnpm start:inspect` | Metro in network-inspect mode: frees :8081, clears the cache, makes the DevTools Network tab record requests (see "Network inspection" below) |
 | `pnpm android:inspect` | Fresh native build + install, then Metro in inspect mode — press `a` when Metro is up (see "Network inspection" below) |
