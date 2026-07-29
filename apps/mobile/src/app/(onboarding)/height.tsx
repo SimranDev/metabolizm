@@ -17,6 +17,7 @@ export default function HeightScreen() {
     <OnboardingScaffold
       progress={stepProgress('height')}
       title="How tall are you?"
+      subtitle="Taller bodies burn more at rest, so this feeds straight into your calorie baseline."
       nextDisabled={!valid}
       onNext={() => router.push('/current-weight')}>
       <HeightField
