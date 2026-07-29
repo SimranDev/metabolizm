@@ -29,26 +29,45 @@ export const Motion = {
   slow: 320,
 } as const;
 
-/** Flat elevation — subtle shadows, no gradients. */
-export const Elevation: Record<'card' | 'raised', ViewStyle> = {
-  card: Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: '#14201F',
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-    },
-    default: { elevation: 1 },
-  }),
-  raised: Platform.select<ViewStyle>({
-    ios: {
-      shadowColor: '#14201F',
-      shadowOpacity: 0.1,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 6 },
-    },
-    default: { elevation: 4 },
-  }),
+/**
+ * Flat elevation — subtle shadows, no gradients. **Keyed by scheme, and dark
+ * is deliberately empty.** A shadow is a darker region, so on a near-black
+ * canvas it renders nothing: the single `#14201F` shadow this used to export
+ * was dead weight in dark (and Android's `elevation` is the same black smear),
+ * which left a dark card with no separation cue at all beyond a 1.11:1 fill
+ * step. Dark leans on the palette's stroke tokens instead — see palette.ts.
+ *
+ * Read it as `Elevation[scheme].card`, never `Elevation.card`. Both branches
+ * are frozen module constants, so this costs no per-render work.
+ */
+export const Elevation: Record<
+  'light' | 'dark',
+  Record<'card' | 'raised', ViewStyle>
+> = {
+  light: {
+    card: Platform.select<ViewStyle>({
+      ios: {
+        shadowColor: '#14201F',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      default: { elevation: 1 },
+    }),
+    raised: Platform.select<ViewStyle>({
+      ios: {
+        shadowColor: '#14201F',
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+      },
+      default: { elevation: 4 },
+    }),
+  },
+  dark: {
+    card: {},
+    raised: {},
+  },
 };
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

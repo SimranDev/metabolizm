@@ -14,10 +14,34 @@
  * - `actionPrimary`/`onActionPrimary`/`inkStrong` are role aliases spread from
  *   base tokens so they can never drift; `inkStrong` is what headers and key
  *   numbers use (primary in light, plain text in dark).
+ *
+ * **Dark mode gets its structure from strokes, not from fill lightness.** The
+ * two schemes are not mirror images. Light can separate a card from the canvas
+ * with a 1.04:1 fill step plus a shadow, because near-white deltas stay
+ * perceptible and a dark shadow reads on a bright ground. Neither holds in
+ * dark: a shadow over a near-black canvas renders nothing (see `Elevation` in
+ * tokens.ts, which is why it is keyed by scheme), and at low screen brightness
+ * ambient room light adds a near-constant luminance to every pixel that
+ * compresses all the near-blacks toward one flat grey. Measured: `surface` vs
+ * `bg` is 1.11:1, and ~1.06:1 once ~5% reflected light is in play.
+ *
+ * So the dark values below deliberately do NOT try to win by spreading
+ * `bg`/`surface`/`surfaceSunken` further apart — that tops out around 1.2:1
+ * and still collapses. Anything a user must *locate* rather than merely read
+ * carries a visible border or a text-weight color, both of which survive that
+ * flattening. `borderStrong` clears 3:1 against every background it sits on
+ * (WCAG 1.4.11) and is the token for control boundaries: an unfocused input,
+ * a switch's off-track. `ringTrack` is subordinate on purpose — it backs data
+ * fills (rings, macro bars) that supply their own contrast, so it sits near
+ * 2.2:1 rather than competing with the value it frames.
  */
 
-/** Soft fills = base color at a fixed alpha (#RRGGBBAA). */
-const soft = (hex: string, alpha: '18' | '1F') => `${hex}${alpha}`;
+/**
+ * Soft fills = base color at a fixed alpha (#RRGGBBAA). Dark carries roughly
+ * double light's alpha: 12% over a near-black canvas composites to ~1.2:1 —
+ * the chip loses its container and reads as bare text.
+ */
+const soft = (hex: string, alpha: '18' | '33') => `${hex}${alpha}`;
 
 const lightBase = {
   bg: '#FAFBF9',
@@ -70,9 +94,15 @@ const darkBase = {
   surfaceSunken: '#101615',
   text: '#ECF2EF',
   textSecondary: '#9DAFA9',
-  textTertiary: '#77878F',
+  // 6.6:1 on surface. The old #77878F was 4.57:1 — nominally AA, but AA's 4.5
+  // assumes ~16px body text and this token drives 11px uppercase `micro`
+  // labels and every placeholder, where it fell under 3:1 at low brightness.
+  // Also pulled into the green-grey family; the old value was a blue-grey
+  // outlier against `textSecondary`.
+  textTertiary: '#93A5A0',
   border: '#263230',
-  borderStrong: '#374743',
+  // 3.0:1 on surfaceSunken, 3.1:1 on bg — WCAG 1.4.11 for control boundaries.
+  borderStrong: '#546661',
   primary: '#C7F239',
   onPrimary: '#2A3A00',
   secondary: '#2A4A50',
@@ -83,20 +113,27 @@ const darkBase = {
   focusRing: '#C7F239',
   macroProtein: '#B49BFF',
   macroProteinText: '#B49BFF',
-  macroProteinSoft: soft('#B49BFF', '1F'),
+  macroProteinSoft: soft('#B49BFF', '33'),
   macroCarbs: '#FFC24B',
   macroCarbsText: '#FFC24B',
-  macroCarbsSoft: soft('#FFC24B', '1F'),
+  macroCarbsSoft: soft('#FFC24B', '33'),
   macroFat: '#3FD0EC',
   macroFatText: '#3FD0EC',
-  macroFatSoft: soft('#3FD0EC', '1F'),
+  macroFatSoft: soft('#3FD0EC', '33'),
   success: '#2FBF71',
   successText: '#4ED98B',
-  successSoft: soft('#2FBF71', '1F'),
+  // Soft fills derive from the *brightened* dark variant, not the base — the
+  // same way every macro*Soft above does. Washing the base `#2FBF71`/`#E5484D`
+  // over a near-black canvas barely lifts it (dangerSoft landed at 1.22:1 even
+  // at 20%), because those two bases are tuned for a white ground.
+  successSoft: soft('#4ED98B', '33'),
   danger: '#E5484D',
   dangerText: '#FF7A7E',
-  dangerSoft: soft('#E5484D', '1F'),
-  ringTrack: '#22302D',
+  dangerSoft: soft('#FF7A7E', '33'),
+  // 2.2:1 on surface (was 1.24:1 — the unfilled half of every ring and macro
+  // bar was invisible, so a bar at 30% read as a stub with no scale). Stays
+  // below borderStrong by design: this is a data track, not a control edge.
+  ringTrack: '#4A5751',
   scrim: 'rgba(0,0,0,0.6)',
 } as const;
 
