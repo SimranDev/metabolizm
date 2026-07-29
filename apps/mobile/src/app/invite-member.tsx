@@ -158,7 +158,8 @@ export default function InviteMemberScreen() {
                   setRequiresApproval(next);
                 }}
                 accessibilityLabel="Review before they join"
-                trackColor={{ true: colors.actionPrimary, false: colors.ringTrack }}
+                // Control boundary, not a data track — see share-toggles.tsx.
+                trackColor={{ true: colors.actionPrimary, false: colors.borderStrong }}
                 thumbColor={colors.surface}
               />
             </View>

@@ -14,8 +14,14 @@ type Props = TextInputProps & {
 };
 
 /**
- * The app's text field. Sunken box, 2px focus ring (border is always 2px —
- * transparent when blurred — so focusing never shifts layout).
+ * The app's text field. Sunken box, 2px focus ring (the border is always 2px
+ * and only changes color, so focusing never shifts layout).
+ *
+ * The blurred border is `borderStrong`, not transparent: in dark mode the
+ * `surfaceSunken` fill is 1.03:1 against the canvas, so a transparent border
+ * left an unfocused field with no boundary whatsoever — nothing on screen said
+ * a field was there or where to tap. `borderStrong` clears 3:1 (WCAG 1.4.11)
+ * on both backgrounds a field sits on.
  */
 export function Input({
   label,
@@ -42,7 +48,7 @@ export function Input({
           styles.box,
           {
             backgroundColor: colors.surfaceSunken,
-            borderColor: focused ? colors.focusRing : 'transparent',
+            borderColor: focused ? colors.focusRing : colors.borderStrong,
           },
         ]}>
         {leading}

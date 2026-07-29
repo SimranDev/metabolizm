@@ -4,13 +4,15 @@ import { Elevation, Radius, Spacing, useTheme } from '@/theme';
 
 /** Flat Kinetic card: surface, hairline border, subtle shadow. */
 export function Card({ style, ...rest }: ViewProps) {
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
 
   return (
     <View
       style={[
         styles.card,
-        Elevation.card,
+        // Scheme-keyed: dark contributes no shadow, because a shadow over a
+        // near-black canvas draws nothing. Its edge comes from the border.
+        Elevation[scheme].card,
         { backgroundColor: colors.surface, borderColor: colors.border },
         style,
       ]}

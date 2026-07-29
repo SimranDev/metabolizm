@@ -103,7 +103,9 @@ function Row({
         onValueChange={onChange}
         disabled={disabled}
         accessibilityLabel={label}
-        trackColor={{ true: colors.actionPrimary, false: colors.ringTrack }}
+        // Off-track is `borderStrong`, not `ringTrack`: a switch track is a
+        // control boundary (3:1, WCAG 1.4.11), not a subordinate data track.
+        trackColor={{ true: colors.actionPrimary, false: colors.borderStrong }}
         thumbColor={colors.surface}
       />
     </View>
