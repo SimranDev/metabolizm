@@ -16,6 +16,7 @@
     "db:migrate": "pnpm --filter @metabolizm/db db:migrate",
     "db:studio": "pnpm --filter @metabolizm/db db:studio",
     "db:dbml": "pnpm --filter @metabolizm/db db:dbml",
+    "clean": "node scripts/clean.mjs",
     "lint": "pnpm -r lint",
     "test": "vitest run",
     "typecheck": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm -r typecheck"
