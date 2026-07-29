@@ -1,19 +1,17 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppearanceCard } from '@/components/profile/appearance-card';
 import { DeleteAccountSheet } from '@/components/profile/delete-account-sheet';
-import { GoalWeightCard } from '@/components/profile/goal-weight-card';
-import { TargetsCard } from '@/components/profile/targets-card';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { SettingsGroup, SettingsRow } from '@/components/ui/settings-row';
 import { endSession } from '@/lib/session';
+import { formatWeight } from '@/lib/weight';
 import { useProfile } from '@/store/profile';
 import { useWeight } from '@/store/weight';
-import { Spacing } from '@/theme';
+import { Spacing, THEME_PREFERENCE_OPTIONS, useThemePreference } from '@/theme';
 
 /**
  * Profile & settings.
@@ -26,10 +24,22 @@ import { Spacing } from '@/theme';
  * owning a tab: it is the lowest-frequency destination in the app, and the tab
  * bar is for the surfaces you come back to every day. Like the groups and
  * weight drill-downs it therefore carries its own ScreenHeader.
+ *
+ * It lives at `profile/index.tsx`, not `profile.tsx`. A sibling `profile.tsx`
+ * and `profile/` directory resolve to the same URL, and whichever one loses is
+ * silently unreachable — the same collision that once trapped every user on the
+ * onboarding height step (see the note in `(onboarding)/current-weight.tsx`).
+ *
+ * Each row is a door to a single-purpose screen rather than another card on one
+ * long page: the list stays scannable as settings accumulate, and a row can show
+ * its current value so the group reads as a summary.
  */
 export default function ProfileScreen() {
+  const router = useRouter();
   const profile = useProfile((s) => s.profile);
   const unit = useWeight((s) => s.unit);
+  const goal = useWeight((s) => s.goal);
+  const preference = useThemePreference((s) => s.preference);
   const [signingOut, setSigningOut] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -53,6 +63,10 @@ export default function ProfileScreen() {
     );
   };
 
+  const goalKg = goal?.targetWeightKg ?? profile?.goalWeightKg ?? null;
+  const themeLabel =
+    THEME_PREFERENCE_OPTIONS.find((o) => o.value === preference)?.label ?? 'System';
+
   return (
     <ThemedView style={styles.container}>
       <ScreenHeader title="Profile" />
@@ -61,20 +75,37 @@ export default function ProfileScreen() {
           header above still gives a way back if it ever renders. */}
       {!profile ? null : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Card style={styles.account}>
-            <ThemedText type="micro" themeColor="textSecondary">
-              SIGNED IN AS
-            </ThemedText>
-            <ThemedText type="h3">{profile.email}</ThemedText>
-          </Card>
+          <SettingsGroup title="ACCOUNT">
+            <SettingsRow first label="Signed in as" value={profile.email} />
+          </SettingsGroup>
 
-          <TargetsCard profile={profile} />
+          <SettingsGroup title="NUTRITION">
+            <SettingsRow
+              first
+              label="Daily targets"
+              value={`${profile.targetCalories.toLocaleString()} cal`}
+              onPress={() => router.push('/profile/targets')}
+            />
+            <SettingsRow
+              label="Goal weight"
+              value={goalKg != null ? formatWeight(goalKg, unit) : 'Not set'}
+              onPress={() => router.push('/profile/goal')}
+            />
+          </SettingsGroup>
 
-          {/* The unit toggle lives inside this card's WeightField and is the
-              app-wide preference, so there is no separate units row. */}
-          <GoalWeightCard profile={profile} unit={unit} />
-
-          <AppearanceCard />
+          <SettingsGroup title="PREFERENCES">
+            <SettingsRow
+              first
+              label="Units"
+              value={`${unit} · ${profile.heightUnit === 'cm' ? 'cm' : 'ft/in'}`}
+              onPress={() => router.push('/profile/units')}
+            />
+            <SettingsRow
+              label="Appearance"
+              value={themeLabel}
+              onPress={() => router.push('/profile/appearance')}
+            />
+          </SettingsGroup>
 
           <View style={styles.danger}>
             <Button
@@ -108,9 +139,7 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.s16,
     paddingBottom: Spacing.s48,
-    gap: Spacing.s16,
+    gap: Spacing.s24,
   },
-  account: { gap: Spacing.s4 },
-  section: { gap: Spacing.s12 },
   danger: { marginTop: Spacing.s8, gap: Spacing.s4 },
 });

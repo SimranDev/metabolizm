@@ -34,7 +34,7 @@ export default function AppTabs() {
             <TabButton>Recipes</TabButton>
           </TabTrigger>
           {/* No Profile trigger: it pushes at the root stack from the
-              AppHeader's profile button. See src/app/profile.tsx. */}
+              AppHeader's profile button. See src/app/profile/index.tsx. */}
         </CustomTabList>
       </TabList>
     </Tabs>

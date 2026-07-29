@@ -38,7 +38,7 @@ export default function AppTabs() {
       </NativeTabs.Trigger>
 
       {/* No Profile tab: it pushes at the root stack from the AppHeader's
-          profile button instead. See src/app/profile.tsx. */}
+          profile button instead. See src/app/profile/index.tsx. */}
     </NativeTabs>
   );
 }
