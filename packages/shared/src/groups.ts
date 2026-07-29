@@ -59,6 +59,12 @@ export type GroupListItemDto = {
   myStreak: number;
   /** Interactions + member summaries newer than my lastSeenAt. */
   unreadCount: number;
+  /**
+   * Join requests awaiting a decision. Always 0 for a plain member: only
+   * owners, admins and trainer-group coaches can act on one, and a count you
+   * can't do anything about is noise.
+   */
+  pendingRequestCount: number;
 };
 
 export type GroupsListResponse = { groups: GroupListItemDto[] };
@@ -71,6 +77,8 @@ export type GroupInviteDto = {
   maxUses: number | null;
   useCount: number;
   revokedAt: string | null;
+  /** Opening this link asks to join rather than joining outright. */
+  requiresApproval: boolean;
   createdAt: string;
 };
 
@@ -80,12 +88,109 @@ export type CreateGroupInviteResponse = { invite: GroupInviteDto };
 export type GroupInvitePreviewResponse = {
   group: { name: string; category: GroupCategory; memberCount: number };
   shareDefaults: GroupShareConfig;
+  /** When true this link asks to join: the screen offers Request, not Join. */
+  requiresApproval: boolean;
 };
 
 export type AcceptGroupInviteResponse = {
   group: GroupDto;
   membership: GroupMembershipDto;
 };
+
+/**
+ * A person-to-person invitation as it appears to its recipient.
+ *
+ * The one Groups payload that carries no masking, and deliberately: it holds
+ * the group's name, its size, and the name of whoever sent it — all of it
+ * disclosed by the sender in the act of inviting. No member's logged data is
+ * in here, so there is nothing for masking.ts to gate.
+ *
+ * Note what is absent: the invite `token`. A direct invitation is addressed by
+ * `id` and authorized against the recipient, so it can never be forwarded to
+ * someone the group didn't choose.
+ */
+export type ReceivedInvitationDto = {
+  id: string;
+  group: { id: string; name: string; category: GroupCategory; memberCount: number };
+  invitedBy: { name: string; image: string | null };
+  /** What accepting would share — the same shape the consent screen renders. */
+  shareDefaults: GroupShareConfig;
+  expiresAt: string;
+  createdAt: string;
+};
+
+/**
+ * Everything waiting on me, in one fetch: invitations others sent, and the
+ * requests I made that haven't been decided. Both are things the Groups tab
+ * has to surface, and splitting them into two round trips would mean the tab
+ * could show one and not the other.
+ */
+export type MyInvitationsResponse = {
+  invitations: ReceivedInvitationDto[];
+  requests: MyJoinRequestDto[];
+};
+
+export type InvitationState =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "revoked"
+  | "expired";
+
+/**
+ * An invitation as it appears to the group that sent it.
+ *
+ * Allowlist-built down to the email string on purpose: joining `users` for the
+ * recipient's name and avatar would turn "did this address reject my invite"
+ * into an `email → display name + photo` lookup available to anyone who makes
+ * a group alone. Identity appears only once they've accepted and are a member.
+ */
+export type SentInvitationDto = {
+  id: string;
+  email: string;
+  state: InvitationState;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type GroupInvitationsResponse = { invitations: SentInvitationDto[] };
+
+export type CreateGroupInvitationResponse = { invitation: SentInvitationDto };
+
+export type JoinRequestStatus =
+  | "pending"
+  | "approved"
+  | "declined"
+  | "cancelled";
+
+/**
+ * Someone asking to join, as the group's owner/admin/coach sees them.
+ *
+ * Allowlist-built: identity plus the sharing they're proposing, and nothing
+ * else off the row — never `users.email`, never `decidedBy`. `shareConfig` is
+ * the requester's own choice about their own data, shown so the approver knows
+ * what they'd be agreeing to receive.
+ */
+export type GroupJoinRequestDto = {
+  id: string;
+  userId: string;
+  name: string;
+  image: string | null;
+  shareConfig: GroupShareConfig;
+  requestedAt: string;
+};
+
+export type GroupJoinRequestsResponse = { requests: GroupJoinRequestDto[] };
+
+/** A request I made, as I see it while waiting. */
+export type MyJoinRequestDto = {
+  id: string;
+  group: { id: string; name: string; category: GroupCategory };
+  status: JoinRequestStatus;
+  requestedAt: string;
+};
+
+export type RequestToJoinResponse = { request: MyJoinRequestDto };
 
 export type UpdateMyMembershipResponse = { membership: GroupMembershipDto };
 

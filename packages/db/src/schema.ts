@@ -31,30 +31,42 @@ export const weightUnitEnum = pgEnum("weight_unit", ["kg", "lb", "st"]);
 // Auth tables follow Better Auth's core model; TS property names must equal
 // Better Auth's field names (and export names its pluralized model names) so
 // the drizzle adapter needs no model/field mapping.
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  name: text("name").notNull(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  // IANA timezone name; drives each member's "today" in group reads.
-  timezone: text("timezone").notNull().default("UTC"),
-  // ISO 3166-1 alpha-2, validated against SUPPORTED_REGIONS in
-  // @metabolizm/shared. Ranks catalog search (never filters it) — see
-  // regionRank in CatalogService.listFoods. Exactly like `timezone`: the
-  // `users` module is the ONLY writer, and the default is a fallback rather
-  // than an answer, so onboarding sets it explicitly from the device locale.
-  // A client that never sets it silently gets wrongly-ranked results.
-  region: text("region").notNull().default("NZ"),
-  // Display preference only — every weight is stored in kilograms.
-  weightUnit: weightUnitEnum("weight_unit").notNull().default("kg"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    name: text("name").notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    // IANA timezone name; drives each member's "today" in group reads.
+    timezone: text("timezone").notNull().default("UTC"),
+    // ISO 3166-1 alpha-2, validated against SUPPORTED_REGIONS in
+    // @metabolizm/shared. Ranks catalog search (never filters it) — see
+    // regionRank in CatalogService.listFoods. Exactly like `timezone`: the
+    // `users` module is the ONLY writer, and the default is a fallback rather
+    // than an answer, so onboarding sets it explicitly from the device locale.
+    // A client that never sets it silently gets wrongly-ranked results.
+    region: text("region").notNull().default("NZ"),
+    // Display preference only — every weight is stored in kilograms.
+    weightUnit: weightUnitEnum("weight_unit").notNull().default("kg"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // Backs the invite-by-email lookup, which must be case-insensitive:
+    // Better Auth stores the address as the user typed it, so a plain
+    // `email = $1` misses `Sam@x.com` when the inviter types `sam@x.com`.
+    // Deliberately NOT unique — the `email` column already carries the
+    // uniqueness constraint, and a unique functional index would fail to
+    // build the moment two accounts differ only in case.
+    index("users_email_lower_idx").on(sql`lower(${t.email})`),
+  ],
+);
 
 export const sessions = pgTable(
   "sessions",
@@ -129,6 +141,36 @@ export const verifications = pgTable(
       .defaultNow(),
   },
   (t) => [index("verifications_identifier_idx").on(t.identifier)],
+);
+
+export const devicePlatformEnum = pgEnum("device_platform", ["ios", "android"]);
+
+// Expo push tokens, one row per device that has granted notifications.
+export const devicePushTokens = pgTable(
+  "device_push_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // ExpoPushToken[...]; issued per install, not per account.
+    token: text("token").notNull(),
+    platform: devicePlatformEnum("platform").notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // Unique on the TOKEN, not on (user, token): a device belongs to whoever
+    // is signed in on it right now. Registering an existing token under a new
+    // user must REASSIGN the row, or the previous account's notifications keep
+    // arriving on a phone somebody else is now holding.
+    uniqueIndex("device_push_tokens_token_uq").on(t.token),
+    index("device_push_tokens_user_id_idx").on(t.userId),
+  ],
 );
 
 export const foodSourceEnum = pgEnum("food_source", ["system", "custom"]);
@@ -451,11 +493,24 @@ export const groupRoleEnum = pgEnum("group_role", [
   "member",
   "coach",
 ]);
+// `invited` is reserved and deliberately NEVER written: a pending invitation
+// lives on group_invites (kind = 'direct'), not here. Writing one would land
+// inside group_members_group_user_current_uq below, so the invitee's own
+// later accept would hit 23505 and be reported as "Already a member of this
+// group" — a confidently wrong error for the one person entitled to join.
 export const groupMemberStatusEnum = pgEnum("group_member_status", [
   "invited",
   "active",
   "left",
   "removed",
+]);
+// How an invite reaches its recipient. Stored rather than derived from
+// `invited_user_id IS NOT NULL`: it discriminates three modes (open link,
+// approval-gated link, person-to-person) across two nullable columns, and
+// every query that must not mix them reads better — and greps — as `kind`.
+export const groupInviteKindEnum = pgEnum("group_invite_kind", [
+  "link",
+  "direct",
 ]);
 export const groupInteractionKindEnum = pgEnum("group_interaction_kind", [
   "comment",
@@ -532,12 +587,33 @@ export const groupInvites = pgTable(
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    // Short URL-safe secret for the invite link/QR.
+    kind: groupInviteKindEnum("kind").notNull().default("link"),
+    // Short URL-safe secret for the invite link/QR. Present on every row
+    // because the column is NOT NULL, but for kind = 'direct' it NEVER leaves
+    // the server: those rows are addressed by id and authorized against
+    // invited_user_id, so the invitation can't be forwarded to a stranger who
+    // would then be standing inside the masking boundary.
     token: text("token").notNull(),
+    // Set for kind = 'direct' only: the one account entitled to accept.
+    invitedUserId: uuid("invited_user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    // The address the inviter typed, lowercased. Display for the sender's
+    // pending list (which shows this and never the recipient's name/avatar,
+    // so the endpoint can't be walked as email → profile), and the recipient
+    // for the eventual mail send.
+    invitedEmail: text("invited_email"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     maxUses: integer("max_uses"),
     useCount: integer("use_count").notNull().default(0),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    // Distinct from revoked_at: revoked is the sender withdrawing, declined is
+    // the recipient saying no. Collapsing them would tell the sender the wrong
+    // story about their own invitation.
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+    // Link invites only — a person-to-person invitation is already a decision
+    // about that person, so approving it again is nonsense. Enforced below.
+    requiresApproval: boolean("requires_approval").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -545,6 +621,100 @@ export const groupInvites = pgTable(
   (t) => [
     uniqueIndex("group_invites_token_uq").on(t.token),
     index("group_invites_group_id_idx").on(t.groupId),
+    // One live invitation per person per group. The predicate deliberately
+    // cannot mention expires_at (not immutable, so Postgres won't index it),
+    // which is exactly why creating a direct invitation is an upsert onto
+    // this index rather than a check-then-insert: an expired-but-unrevoked
+    // row is "not live" to inviteRejection yet still occupies the index, so a
+    // plain insert would 23505 forever and that person could never be
+    // re-invited.
+    uniqueIndex("group_invites_group_invited_user_uq")
+      .on(t.groupId, t.invitedUserId)
+      .where(
+        sql`kind = 'direct' AND revoked_at IS NULL AND declined_at IS NULL AND use_count = 0`,
+      ),
+    index("group_invites_invited_user_idx")
+      .on(t.invitedUserId)
+      .where(sql`kind = 'direct'`),
+    // The two modes, stated where they can't be forgotten. Bare column names
+    // on purpose — see the note on weight_entries_weight_kg_check.
+    check(
+      "group_invites_direct_check",
+      sql`kind <> 'direct' OR (invited_user_id IS NOT NULL AND max_uses = 1 AND requires_approval = false)`,
+    ),
+    check(
+      "group_invites_link_check",
+      sql`kind <> 'link' OR invited_user_id IS NULL`,
+    ),
+  ],
+);
+
+export const joinRequestStatusEnum = pgEnum("join_request_status", [
+  "pending",
+  "approved",
+  "declined",
+  "cancelled",
+]);
+
+/**
+ * Someone asking to join, rather than being invited.
+ *
+ * The inverse authorization of an invitation: authored by the joiner, decided
+ * by the group. Only reachable from a link whose `requires_approval` is set —
+ * there is no discovery, so a request can only ever come from a link the group
+ * already handed out, and a coach handing one to a class can still choose who
+ * lands in their roster.
+ */
+export const groupJoinRequests = pgTable(
+  "group_join_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: joinRequestStatusEnum("status").notNull().default("pending"),
+    /**
+     * DELIBERATE DEVIATION — this is the codebase's only consent snapshot.
+     *
+     * Everywhere else masking reads a member's CURRENT config at read time and
+     * there are no snapshots (see the groups masking rules). A pending request
+     * has no membership to read a config from, and the consent screen's whole
+     * promise is that nothing is joined before the toggles have been seen — so
+     * the joiner's choices have to be held somewhere until a decision lands.
+     * It is a proposal, not a grant: it governs nothing until approval merges
+     * it onto the category defaults, and from that moment the live membership
+     * config is the only thing masking consults.
+     */
+    shareConfig: jsonb("share_config")
+      .$type<Partial<GroupShareConfig>>()
+      .notNull()
+      .default({}),
+    /** Provenance: which link this came through. */
+    inviteId: uuid("invite_id").references(() => groupInvites.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [
+    // One open request per person per group; decided rows stay as history and
+    // don't block asking again after a decline.
+    uniqueIndex("group_join_requests_group_user_pending_uq")
+      .on(t.groupId, t.userId)
+      .where(sql`status = 'pending'`),
+    // The approver's queue: proportional to what's open, not to history.
+    index("group_join_requests_group_idx")
+      .on(t.groupId)
+      .where(sql`status = 'pending'`),
+    index("group_join_requests_user_idx").on(t.userId),
   ],
 );
 

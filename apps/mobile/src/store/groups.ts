@@ -21,6 +21,8 @@ import type {
   GroupDto,
   GroupListItemDto,
   GroupShareConfig,
+  MyJoinRequestDto,
+  ReceivedInvitationDto,
 } from "@metabolizm/shared";
 
 import { zustandMmkvStorage } from "./storage";
@@ -32,12 +34,34 @@ type PersistedGroups = { groups: GroupListItemDto[] };
 type GroupsState = PersistedGroups & {
   status: Status;
   error: string | null;
+  /**
+   * Invitations waiting for me. Deliberately NOT persisted (see `partialize`):
+   * each one carries another person's name, and the rule this store follows is
+   * that data about other people never touches disk — and an invitation that
+   * was revoked or declined while the app was closed must not paint from cache.
+   */
+  invitations: ReceivedInvitationDto[];
+  /** Requests I've made that nobody has decided yet. Not persisted either. */
+  myRequests: MyJoinRequestDto[];
   refresh: () => Promise<void>;
+  /** The inbox. Separate from `refresh` so one failing can't blank the other. */
+  refreshInvitations: () => Promise<void>;
   createGroup: (input: { name: string; category: GroupCategory }) => Promise<GroupDto>;
   acceptInvite: (
     token: string,
     shareConfig: Partial<GroupShareConfig>,
   ) => Promise<GroupDto>;
+  acceptInvitation: (
+    invitationId: string,
+    shareConfig: Partial<GroupShareConfig>,
+  ) => Promise<GroupDto>;
+  declineInvitation: (invitationId: string) => Promise<void>;
+  /** Ask to join via an approval-gated link. Returns nothing to navigate to. */
+  requestToJoin: (
+    token: string,
+    shareConfig: Partial<GroupShareConfig>,
+  ) => Promise<void>;
+  cancelRequest: (requestId: string) => Promise<void>;
   leave: (groupId: string) => Promise<void>;
   /** Sends only the toggles that changed; returns the server's merged config. */
   updateSharing: (
@@ -58,10 +82,19 @@ export const useGroups = create<GroupsState>()(
   persist(
     (set, get) => ({
       groups: [],
+      invitations: [],
+      myRequests: [],
       status: "idle",
       error: null,
 
-      reset: () => set({ groups: [], status: "idle", error: null }),
+      reset: () =>
+        set({
+          groups: [],
+          invitations: [],
+          myRequests: [],
+          status: "idle",
+          error: null,
+        }),
 
       refresh: async () => {
         set({ status: "loading", error: null });
@@ -72,6 +105,17 @@ export const useGroups = create<GroupsState>()(
           // Keep the persisted list on screen — a failed refresh shouldn't
           // blank a tab the user can still read.
           set({ status: "error", error: message(err) });
+        }
+      },
+
+      refreshInvitations: async () => {
+        try {
+          const { invitations, requests } = await groupsApi.listMyInvitations();
+          set({ invitations, myRequests: requests });
+        } catch {
+          // Silent, and it does NOT clear what's on screen: the inbox is
+          // additive to the tab, so a failed fetch should leave the groups
+          // list alone rather than surface a second error banner.
         }
       },
 
@@ -88,6 +132,41 @@ export const useGroups = create<GroupsState>()(
         );
         await get().refresh();
         return group;
+      },
+
+      acceptInvitation: async (invitationId, shareConfig) => {
+        const { group } = await groupsApi.acceptInvitation(
+          invitationId,
+          Object.keys(shareConfig).length > 0 ? shareConfig : undefined,
+        );
+        set((state) => ({
+          invitations: state.invitations.filter((i) => i.id !== invitationId),
+        }));
+        await get().refresh();
+        return group;
+      },
+
+      declineInvitation: async (invitationId) => {
+        await groupsApi.declineInvitation(invitationId);
+        set((state) => ({
+          invitations: state.invitations.filter((i) => i.id !== invitationId),
+        }));
+      },
+
+      requestToJoin: async (token, shareConfig) => {
+        const { request } = await groupsApi.requestToJoin(
+          token,
+          Object.keys(shareConfig).length > 0 ? shareConfig : undefined,
+        );
+        // Not a join: no group to refresh, just a pending row to show.
+        set((state) => ({ myRequests: [...state.myRequests, request] }));
+      },
+
+      cancelRequest: async (requestId) => {
+        await groupsApi.cancelJoinRequest(requestId);
+        set((state) => ({
+          myRequests: state.myRequests.filter((r) => r.id !== requestId),
+        }));
       },
 
       leave: async (groupId) => {
@@ -121,6 +200,9 @@ export const useGroups = create<GroupsState>()(
       name: "metabolizm-groups",
       version: 1,
       storage: createJSONStorage(() => zustandMmkvStorage),
+      // Only `groups`. `invitations` and `myRequests` are excluded on purpose,
+      // not by oversight: they name other people, and a stale copy would show
+      // an invitation since withdrawn or a request already decided.
       partialize: (state): PersistedGroups => ({ groups: state.groups }),
       // Status is always derived fresh — a persisted "ready" would hide the
       // first refresh of the session.

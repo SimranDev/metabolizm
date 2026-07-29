@@ -92,6 +92,27 @@
       "when": 1785301581940,
       "tag": "0012_analyze_after_bulk_update",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785314991088,
+      "tag": "0013_direct_group_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785316293050,
+      "tag": "0014_device_push_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1785317057795,
+      "tag": "0015_group_join_requests",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@
 
 import { usersApi } from "@/lib/api";
 import { signOut } from "@/lib/auth";
+import { unregisterForPush } from "@/lib/push";
 import { useDiary } from "@/store/diary";
 import { useGroups } from "@/store/groups";
 import { useOnboarding } from "@/store/onboarding";
@@ -41,13 +42,22 @@ export function clearLocalData(): void {
 /**
  * Sign out and forget the account on this device.
  *
- * Order matters. The session is dropped first so that nothing can start a new
- * authenticated request against the account mid-teardown; the local wipe then
- * runs unconditionally, because a failed server call (offline) must still get
- * the user out rather than stranding them signed in with a dead session.
+ * Order matters, in three steps rather than two.
+ *
+ * The push token goes back FIRST, because that call is authenticated and
+ * `signOut` drops the cookie it needs. Skip it and this device keeps its
+ * server-side binding to the account being signed out of, so the next person
+ * to sign in here still gets that account's notifications on their lock
+ * screen. It is best-effort for the same reason everything else here is: an
+ * offline user must still get out.
+ *
+ * Then the session is dropped, so nothing can start a new authenticated
+ * request mid-teardown; then the local wipe runs unconditionally, because a
+ * failed server call must not strand someone signed in with a dead session.
  */
 export async function endSession(): Promise<void> {
   try {
+    await unregisterForPush();
     await signOut();
   } finally {
     clearLocalData();
@@ -66,7 +76,9 @@ export async function endSession(): Promise<void> {
  *
  * After the delete lands the session is already dead server-side (the Better
  * Auth `sessions` rows cascade with the user), so `signOut` here is only about
- * dropping the cached cookie — hence best-effort, inside `endSession`.
+ * dropping the cached cookie — hence best-effort, inside `endSession`. The
+ * push-token handback inside it will fail for the same reason and doesn't need
+ * to succeed: `device_push_tokens` cascades with the user row too.
  */
 export async function deleteAccount(): Promise<void> {
   await usersApi.deleteMe();

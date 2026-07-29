@@ -10,6 +10,7 @@ import { usersApi } from '@/lib/api';
 import { signIn } from '@/lib/auth';
 import { haptics } from '@/lib/haptics';
 import { answersFromProfile } from '@/lib/onboarding-metrics';
+import { registerForPush } from '@/lib/push';
 import { useOnboarding } from '@/store/onboarding';
 import { useProfile } from '@/store/profile';
 import { useWeight } from '@/store/weight';
@@ -29,6 +30,10 @@ export default function SignInScreen() {
     // A session exists now, so this is the first call that can actually land.
     usersApi.pushDeviceTimezone();
     usersApi.pushDeviceRegion();
+    // Re-bind this device's push token to the account that just signed in,
+    // without prompting: a second device belonging to someone who already
+    // granted notifications starts receiving them without visiting Groups.
+    void registerForPush({ promptIfNeeded: false });
     try {
       const { profile } = await usersApi.getMyProfile();
       if (profile) {

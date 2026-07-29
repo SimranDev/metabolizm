@@ -11,6 +11,11 @@ enum base_unit {
   ml
 }
 
+enum device_platform {
+  ios
+  android
+}
+
 enum food_review_status {
   pending
   approved
@@ -43,6 +48,11 @@ enum group_interaction_kind {
   reaction
 }
 
+enum group_invite_kind {
+  link
+  direct
+}
+
 enum group_member_status {
   invited
   active
@@ -60,6 +70,13 @@ enum group_role {
 enum height_unit {
   cm
   ftin
+}
+
+enum join_request_status {
+  pending
+  approved
+  declined
+  cancelled
 }
 
 enum meal {
@@ -125,6 +142,20 @@ table daily_summaries {
 
   indexes {
     (user_id, entry_date) [pk]
+  }
+}
+
+table device_push_tokens {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  token text [not null]
+  platform device_platform [not null]
+  last_seen_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    token [name: 'device_push_tokens_token_uq', unique]
+    user_id [name: 'device_push_tokens_user_id_idx']
   }
 }
 
@@ -263,16 +294,43 @@ table group_invites {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   group_id uuid [not null]
   created_by uuid [not null]
+  kind group_invite_kind [not null, default: 'link']
   token text [not null]
+  invited_user_id uuid
+  invited_email text
   expires_at "timestamp with time zone" [not null]
   max_uses integer
   use_count integer [not null, default: 0]
   revoked_at "timestamp with time zone"
+  declined_at "timestamp with time zone"
+  requires_approval boolean [not null, default: false]
   created_at "timestamp with time zone" [not null, default: `now()`]
 
   indexes {
     token [name: 'group_invites_token_uq', unique]
     group_id [name: 'group_invites_group_id_idx']
+    (group_id, invited_user_id) [name: 'group_invites_group_invited_user_uq', unique]
+    invited_user_id [name: 'group_invites_invited_user_idx']
+    
+    
+  }
+}
+
+table group_join_requests {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  user_id uuid [not null]
+  status join_request_status [not null, default: 'pending']
+  share_config jsonb [not null, default: `{}`]
+  invite_id uuid
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  decided_at "timestamp with time zone"
+  decided_by uuid
+
+  indexes {
+    (group_id, user_id) [name: 'group_join_requests_group_user_pending_uq', unique]
+    group_id [name: 'group_join_requests_group_idx']
+    user_id [name: 'group_join_requests_user_idx']
   }
 }
 
@@ -386,6 +444,10 @@ table users {
   weight_unit weight_unit [not null, default: 'kg']
   created_at "timestamp with time zone" [not null, default: `now()`]
   updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    email [name: 'users_email_lower_idx']
+  }
 }
 
 table verifications {
@@ -425,6 +487,8 @@ ref accounts_user_id_users_id_fk: accounts.user_id > users.id [delete: cascade, 
 
 ref daily_summaries_user_id_users_id_fk: daily_summaries.user_id > users.id [delete: cascade, update: no action]
 
+ref device_push_tokens_user_id_users_id_fk: device_push_tokens.user_id > users.id [delete: cascade, update: no action]
+
 ref diary_entries_user_id_users_id_fk: diary_entries.user_id > users.id [delete: cascade, update: no action]
 
 ref diary_entries_food_id_foods_id_fk: diary_entries.food_id > foods.id [delete: set null, update: no action]
@@ -456,6 +520,16 @@ ref group_interactions_subject_user_id_users_id_fk: group_interactions.subject_u
 ref group_invites_group_id_groups_id_fk: group_invites.group_id > groups.id [delete: cascade, update: no action]
 
 ref group_invites_created_by_users_id_fk: group_invites.created_by > users.id [delete: cascade, update: no action]
+
+ref group_invites_invited_user_id_users_id_fk: group_invites.invited_user_id > users.id [delete: cascade, update: no action]
+
+ref group_join_requests_group_id_groups_id_fk: group_join_requests.group_id > groups.id [delete: cascade, update: no action]
+
+ref group_join_requests_user_id_users_id_fk: group_join_requests.user_id > users.id [delete: cascade, update: no action]
+
+ref group_join_requests_invite_id_group_invites_id_fk: group_join_requests.invite_id > group_invites.id [delete: set null, update: no action]
+
+ref group_join_requests_decided_by_users_id_fk: group_join_requests.decided_by > users.id [delete: set null, update: no action]
 
 ref group_members_group_id_groups_id_fk: group_members.group_id > groups.id [delete: cascade, update: no action]
 

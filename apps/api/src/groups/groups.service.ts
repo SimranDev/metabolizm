@@ -2,6 +2,7 @@ import {
   dailySummaries,
   groupInteractions,
   groupInvites,
+  groupJoinRequests,
   groupMembers,
   groups,
   userTargets,
@@ -14,15 +15,26 @@ import {
   type CreateGroupInput,
   type CreateGroupInteractionInput,
   type CreateGroupInteractionResponse,
+  type CreateGroupInvitationInput,
+  type CreateGroupInvitationResponse,
   type CreateGroupInviteInput,
   type CreateGroupResponse,
   type GroupDto,
   type GroupInvitePreviewResponse,
   type GroupInviteDto,
+  type GroupInvitationsResponse,
+  type GroupJoinRequestsResponse,
   type GroupMembershipDto,
   type GroupShareConfig,
+  type InvitationState,
+  type MyInvitationsResponse,
+  type MyJoinRequestDto,
   type PutMemberTargetsInput,
   type PutMemberTargetsResponse,
+  type ReceivedInvitationDto,
+  type RequestToJoinInput,
+  type RequestToJoinResponse,
+  type SentInvitationDto,
   type TransferOwnershipInput,
   type UpdateMyMembershipInput,
 } from "@metabolizm/shared";
@@ -35,13 +47,32 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, count, eq, gte, isNull, ne, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  ne,
+  sql,
+} from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 
 import { isPgError } from "../common/pg-error";
 import { DB, type Database } from "../db/db.module";
+import { NotificationsService } from "../notifications/notifications.service";
 import { SummariesService, type DbExecutor } from "../summaries/summaries.service";
-import { generateInviteToken, inviteRejection, joinRejection } from "./invite-token";
+import {
+  fullMessage,
+  generateInviteToken,
+  inviteRejection,
+  inviteRejectionMessage,
+  joinRejection,
+} from "./invite-token";
 import { normalizeShareConfig } from "./masking";
 
 export type GroupRow = typeof groups.$inferSelect;
@@ -82,7 +113,50 @@ function toInviteDto(row: InviteRow): GroupInviteDto {
     maxUses: row.maxUses,
     useCount: row.useCount,
     revokedAt: row.revokedAt ? row.revokedAt.toISOString() : null,
+    requiresApproval: row.requiresApproval,
     createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/**
+ * How an invitation resolved, for the sender's list.
+ *
+ * Ordered by finality rather than by inviteRejection's order: accepted wins
+ * over everything because a revoke landing after the join changed nothing.
+ */
+function invitationState(row: InviteRow, now: Date = new Date()): InvitationState {
+  if (row.useCount > 0) return "accepted";
+  if (row.declinedAt !== null) return "declined";
+  if (row.revokedAt !== null) return "revoked";
+  if (row.expiresAt.getTime() <= now.getTime()) return "expired";
+  return "pending";
+}
+
+/**
+ * The sender's view of an invitation they sent.
+ *
+ * Built field by field down to the email string: no join to `users`, so the
+ * route can't be walked as email → name → avatar. See SentInvitationDto.
+ */
+function toSentInvitationDto(row: InviteRow): SentInvitationDto {
+  return {
+    id: row.id,
+    email: row.invitedEmail ?? "",
+    state: invitationState(row),
+    expiresAt: row.expiresAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function toMyJoinRequestDto(
+  row: typeof groupJoinRequests.$inferSelect,
+  group: GroupRow,
+): MyJoinRequestDto {
+  return {
+    id: row.id,
+    group: { id: group.id, name: group.name, category: group.category },
+    status: row.status,
+    requestedAt: row.createdAt.toISOString(),
   };
 }
 
@@ -91,6 +165,31 @@ export function isCoach(group: GroupRow, membership: MemberRow): boolean {
   return (
     group.category === "trainer" &&
     (membership.role === "coach" || membership.role === "owner")
+  );
+}
+
+/** A direct invitation lives a week before it needs re-sending. */
+const INVITATION_TTL_HOURS = 168;
+
+/**
+ * The live-invitation predicate, written once.
+ *
+ * It must stay character-for-character the same shape as the partial index
+ * `group_invites_group_invited_user_uq` it targets — Postgres matches an
+ * ON CONFLICT arbiter by proving the predicate implies the index's, and a
+ * drifted copy silently stops matching and turns the upsert back into a
+ * plain insert that 23505s.
+ */
+const LIVE_INVITATION_PREDICATE = sql`kind = 'direct' AND revoked_at IS NULL AND declined_at IS NULL AND use_count = 0`;
+
+/** The same rule as a WHERE clause, for counting and listing. */
+function livePendingInvitation() {
+  return and(
+    eq(groupInvites.kind, "direct"),
+    isNull(groupInvites.revokedAt),
+    isNull(groupInvites.declinedAt),
+    eq(groupInvites.useCount, 0),
+    gt(groupInvites.expiresAt, new Date()),
   );
 }
 
@@ -126,6 +225,7 @@ export class GroupsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly summaries: SummariesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -374,6 +474,7 @@ export class GroupsService {
         token: generateInviteToken(),
         expiresAt: new Date(Date.now() + input.ttlHours * 3_600_000),
         maxUses: input.maxUses,
+        requiresApproval: input.requiresApproval,
       })
       .returning();
     return { invite: toInviteDto(invite) };
@@ -406,7 +507,7 @@ export class GroupsService {
 
   /** Consent screen: what joining via this token means, before accepting. */
   async previewInvite(token: string): Promise<GroupInvitePreviewResponse> {
-    const { group } = await this.loadLiveInvite(this.db, token);
+    const { invite, group } = await this.loadLiveInvite(this.db, token);
     const [{ value: memberCount }] = await this.db
       .select({ value: count() })
       .from(groupMembers)
@@ -420,6 +521,7 @@ export class GroupsService {
         memberCount,
       },
       shareDefaults: shareDefaultsFor(group.category, "member"),
+      requiresApproval: invite.requiresApproval,
     };
   }
 
@@ -428,12 +530,50 @@ export class GroupsService {
     token: string,
     input: AcceptGroupInviteInput,
   ): Promise<AcceptGroupInviteResponse> {
+    return this.runJoin(userId, input, async (tx) => {
+      // Lock the invite row so concurrent accepts serialize on use_count.
+      const row = await this.loadLiveInvite(tx, token, { forUpdate: true });
+      // Belt to previewInvite's braces: the consent screen already offers
+      // Request rather than Join for these, but a client that skipped it must
+      // not be able to walk straight past the group's approval.
+      if (row.invite.requiresApproval) {
+        throw new ConflictException("This group reviews requests to join");
+      }
+      return row;
+    });
+  }
+
+  /**
+   * Accept an invitation addressed to me.
+   *
+   * The token never travels for a direct invitation, so this is the only way
+   * one is redeemed: by id, with the caller checked against invited_user_id.
+   */
+  async acceptInvitation(
+    userId: string,
+    invitationId: string,
+    input: AcceptGroupInviteInput,
+  ): Promise<AcceptGroupInviteResponse> {
+    return this.runJoin(userId, input, (tx) =>
+      this.loadLiveInvitation(tx, invitationId, userId, { forUpdate: true }),
+    );
+  }
+
+  /**
+   * The one join transaction, shared by both accept entry points.
+   *
+   * `load` is what differs — a bearer token, or an invitation addressed to the
+   * caller — and it runs inside the transaction so the row it locks is the row
+   * that gets counted.
+   */
+  private async runJoin(
+    userId: string,
+    input: AcceptGroupInviteInput,
+    load: (tx: DbExecutor) => Promise<{ invite: InviteRow; group: GroupRow }>,
+  ): Promise<AcceptGroupInviteResponse> {
     try {
       return await this.db.transaction(async (tx) => {
-        // Lock the invite row so concurrent accepts serialize on use_count.
-        const { invite, group } = await this.loadLiveInvite(tx, token, {
-          forUpdate: true,
-        });
+        const { invite, group } = await load(tx);
 
         const activeMembers = await tx
           .select({ userId: groupMembers.userId })
@@ -448,7 +588,7 @@ export class GroupsService {
           throw new ConflictException("Already a member of this group");
         }
         if (joinRejection(group.category, activeMembers.length) === "full") {
-          throw new ConflictException("Partner groups are limited to 2 members");
+          throw new ConflictException(fullMessage(group.category));
         }
 
         const shareConfig: GroupShareConfig = {
@@ -482,6 +622,514 @@ export class GroupsService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Invite one person by the email they signed up with.
+   *
+   * Idempotent by construction: an upsert onto the live-invitation index, so
+   * re-inviting somebody refreshes the existing invitation instead of minting
+   * a second one — which is also exactly what Resend needs, hence no separate
+   * route. It has to be an upsert rather than a check-then-insert because the
+   * index cannot include expires_at (see the schema comment): an expired row
+   * is not live to inviteRejection yet still occupies the index, so an insert
+   * would 23505 and that person could never be invited again.
+   */
+  async createInvitation(
+    callerId: string,
+    groupId: string,
+    input: CreateGroupInvitationInput,
+  ): Promise<CreateGroupInvitationResponse> {
+    const { group, membership } = await this.requireMembership(groupId, callerId);
+    const allowed =
+      membership.role === "owner" ||
+      membership.role === "admin" ||
+      isCoach(group, membership);
+    if (!allowed) {
+      throw new ForbiddenException("Only owners, admins, or coaches can invite");
+    }
+
+    // Case-insensitive: Better Auth stores the address as the user typed it.
+    const [invitee] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(sql`lower(${users.email}) = ${input.email}`)
+      .limit(1);
+    if (!invitee) {
+      throw new NotFoundException("No Metabolizm account uses that email");
+    }
+    const [inviter] = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, callerId))
+      .limit(1);
+    const inviterName = inviter?.name ?? "Someone";
+    if (invitee.id === callerId) {
+      throw new BadRequestException("You're already in this group");
+    }
+    if (await this.activeMember(groupId, invitee.id)) {
+      throw new ConflictException("They're already in this group");
+    }
+
+    // Advisory seat check. The authoritative one is inside the join
+    // transaction, but without this the invitee gets a notification, taps
+    // Accept, and only then learns the group was full.
+    const [{ value: occupied }] = await this.db
+      .select({ value: count() })
+      .from(groupMembers)
+      .where(
+        and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")),
+      );
+    const [{ value: pending }] = await this.db
+      .select({ value: count() })
+      .from(groupInvites)
+      .where(and(eq(groupInvites.groupId, groupId), livePendingInvitation()));
+    if (joinRejection(group.category, occupied + pending) === "full") {
+      throw new ConflictException(fullMessage(group.category));
+    }
+
+    const expiresAt = new Date(Date.now() + INVITATION_TTL_HOURS * 3_600_000);
+    const [invitation] = await this.db
+      .insert(groupInvites)
+      .values({
+        id: uuidv7(),
+        groupId,
+        createdBy: callerId,
+        kind: "direct",
+        token: generateInviteToken(),
+        invitedUserId: invitee.id,
+        invitedEmail: input.email,
+        expiresAt,
+        maxUses: 1,
+      })
+      .onConflictDoUpdate({
+        target: [groupInvites.groupId, groupInvites.invitedUserId],
+        targetWhere: LIVE_INVITATION_PREDICATE,
+        set: { expiresAt, createdBy: callerId, invitedEmail: input.email },
+      })
+      .returning();
+
+    // After the write, and unawaited. Inside a transaction a rollback would
+    // still have fired the push; awaited, a slow or failing Expo request would
+    // turn a successful invitation into an error the sender sees. Resending
+    // notifies again on purpose — that is what Resend is for.
+    void this.notifications.sendToUser(invitee.id, {
+      // Only a person's name and a group's name. See PushPayload: a push never
+      // passes through masking.ts, so nothing gated by a share config, and no
+      // number of any kind, may appear here.
+      title: `${inviterName} invited you`,
+      body: `Join ${group.name} on Metabolizm`,
+      data: { kind: "group_invitation", invitationId: invitation.id },
+    });
+
+    return { invitation: toSentInvitationDto(invitation) };
+  }
+
+  /**
+   * Invitations waiting for me.
+   *
+   * Lives here rather than in GroupsReadService because it reads no member
+   * data: an invitation carries the group's name, its size, and the sender's
+   * name, all of which the sender disclosed by inviting. There is nothing for
+   * masking.ts to gate, which is exactly why it must never grow a field that
+   * would need it.
+   */
+  async listMyInvitations(userId: string): Promise<MyInvitationsResponse> {
+    const rows = await this.db
+      .select({
+        invite: groupInvites,
+        group: groups,
+        inviterName: users.name,
+        inviterImage: users.image,
+      })
+      .from(groupInvites)
+      .innerJoin(groups, eq(groupInvites.groupId, groups.id))
+      .innerJoin(users, eq(groupInvites.createdBy, users.id))
+      .where(
+        and(
+          eq(groupInvites.invitedUserId, userId),
+          // A soft-deleted group must not sit in an inbox forever: the name
+          // would still render and Accept would 404.
+          isNull(groups.deletedAt),
+          livePendingInvitation(),
+        ),
+      )
+      .orderBy(asc(groupInvites.createdAt));
+
+    // My own open requests ride along: both are "waiting on a decision" and
+    // the tab has to show them together, so two round trips would let it
+    // render one and not the other.
+    const requestRows = await this.db
+      .select({ request: groupJoinRequests, group: groups })
+      .from(groupJoinRequests)
+      .innerJoin(groups, eq(groupJoinRequests.groupId, groups.id))
+      .where(
+        and(
+          eq(groupJoinRequests.userId, userId),
+          eq(groupJoinRequests.status, "pending"),
+          isNull(groups.deletedAt),
+        ),
+      )
+      .orderBy(asc(groupJoinRequests.createdAt));
+    const requests = requestRows.map((r) =>
+      toMyJoinRequestDto(r.request, r.group),
+    );
+
+    if (rows.length === 0) return { invitations: [], requests };
+
+    // One pass over the members of every invited-to group: it gives both the
+    // member count each card shows and the "did I already join by link"
+    // filter, which would otherwise leave a dead invitation on screen.
+    const groupIds = rows.map((r) => r.group.id);
+    const members = await this.db
+      .select({ groupId: groupMembers.groupId, userId: groupMembers.userId })
+      .from(groupMembers)
+      .where(
+        and(
+          inArray(groupMembers.groupId, groupIds),
+          eq(groupMembers.status, "active"),
+        ),
+      );
+    const counts = new Map<string, number>();
+    const mine = new Set<string>();
+    for (const m of members) {
+      counts.set(m.groupId, (counts.get(m.groupId) ?? 0) + 1);
+      if (m.userId === userId) mine.add(m.groupId);
+    }
+
+    return {
+      requests,
+      invitations: rows
+        .filter((r) => !mine.has(r.group.id))
+        .map((r) => ({
+          id: r.invite.id,
+          group: {
+            id: r.group.id,
+            name: r.group.name,
+            category: r.group.category,
+            memberCount: counts.get(r.group.id) ?? 0,
+          },
+          invitedBy: { name: r.inviterName, image: r.inviterImage },
+          shareDefaults: shareDefaultsFor(r.group.category, "member"),
+          expiresAt: r.invite.expiresAt.toISOString(),
+          createdAt: r.invite.createdAt.toISOString(),
+        })),
+    };
+  }
+
+  /** One invitation addressed to me — the consent screen's data source. */
+  async getMyInvitation(
+    userId: string,
+    invitationId: string,
+  ): Promise<{ invitation: ReceivedInvitationDto }> {
+    // Authorizes first: a stranger gets "not found", never a group name.
+    await this.loadLiveInvitation(this.db, invitationId, userId);
+    const { invitations } = await this.listMyInvitations(userId);
+    const invitation = invitations.find((i) => i.id === invitationId);
+    if (!invitation) throw new NotFoundException("Invitation not found");
+    return { invitation };
+  }
+
+  /** Invitations this group has sent, for the owner/admin/coach who sent them. */
+  async listGroupInvitations(
+    callerId: string,
+    groupId: string,
+  ): Promise<GroupInvitationsResponse> {
+    const { group, membership } = await this.requireMembership(groupId, callerId);
+    const allowed =
+      membership.role === "owner" ||
+      membership.role === "admin" ||
+      isCoach(group, membership);
+    if (!allowed) {
+      throw new ForbiddenException(
+        "Only owners, admins, or coaches can see invitations",
+      );
+    }
+    const rows = await this.db
+      .select()
+      .from(groupInvites)
+      .where(
+        and(eq(groupInvites.groupId, groupId), eq(groupInvites.kind, "direct")),
+      )
+      .orderBy(desc(groupInvites.createdAt))
+      .limit(100);
+    return { invitations: rows.map(toSentInvitationDto) };
+  }
+
+  /**
+   * Ask to join through an approval-gated link.
+   *
+   * The inverse of an invitation: the joiner authors it, the group decides.
+   * Nothing is shared and no membership exists until somebody approves.
+   */
+  async requestToJoin(
+    userId: string,
+    token: string,
+    input: RequestToJoinInput,
+  ): Promise<RequestToJoinResponse> {
+    const { invite, group } = await this.loadLiveInvite(this.db, token);
+    if (!invite.requiresApproval) {
+      throw new ConflictException("This invite can be accepted directly");
+    }
+    if (await this.activeMember(group.id, userId)) {
+      throw new ConflictException("Already a member of this group");
+    }
+
+    try {
+      const [request] = await this.db
+        .insert(groupJoinRequests)
+        .values({
+          id: uuidv7(),
+          groupId: group.id,
+          userId,
+          inviteId: invite.id,
+          shareConfig: input.shareConfig ?? {},
+        })
+        .returning();
+
+      void this.notifyApprovers(group, userId, request.id);
+      return { request: toMyJoinRequestDto(request, group) };
+    } catch (error) {
+      // The partial unique index: one open request per person per group.
+      if (isPgError(error, "23505")) {
+        throw new ConflictException("You've already asked to join this group");
+      }
+      throw error;
+    }
+  }
+
+  /** Open requests, for whoever can decide them. */
+  async listJoinRequests(
+    callerId: string,
+    groupId: string,
+  ): Promise<GroupJoinRequestsResponse> {
+    const { group } = await this.requireApprover(callerId, groupId);
+    const rows = await this.db
+      .select({
+        request: groupJoinRequests,
+        name: users.name,
+        image: users.image,
+      })
+      .from(groupJoinRequests)
+      .innerJoin(users, eq(groupJoinRequests.userId, users.id))
+      .where(
+        and(
+          eq(groupJoinRequests.groupId, groupId),
+          eq(groupJoinRequests.status, "pending"),
+        ),
+      )
+      .orderBy(asc(groupJoinRequests.createdAt));
+    return {
+      // Allowlist-built, not the row: identity and the sharing being proposed,
+      // and nothing else. See GroupJoinRequestDto.
+      requests: rows.map((r) => ({
+        id: r.request.id,
+        userId: r.request.userId,
+        name: r.name,
+        image: r.image,
+        // Resolved the SAME way approval resolves it — defaults, then their
+        // overrides. The stored blob is a partial patch, so normalizing it
+        // alone reads as "shares nothing" for someone who only switched one
+        // toggle off, and the approver would be shown the wrong answer to the
+        // only question this screen asks.
+        shareConfig: {
+          ...shareDefaultsFor(group.category, "member"),
+          ...r.request.shareConfig,
+        },
+        requestedAt: r.request.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  /**
+   * Approve a request: the membership is created here, from the config the
+   * requester chose when they asked.
+   */
+  async approveJoinRequest(
+    callerId: string,
+    groupId: string,
+    requestId: string,
+  ): Promise<AcceptGroupInviteResponse> {
+    const { group } = await this.requireApprover(callerId, groupId);
+
+    const result = await this.db.transaction(async (tx) => {
+      // Lock the request so two admins approving at once can't both insert.
+      const [request] = await tx
+        .select()
+        .from(groupJoinRequests)
+        .where(
+          and(
+            eq(groupJoinRequests.id, requestId),
+            eq(groupJoinRequests.groupId, groupId),
+            eq(groupJoinRequests.status, "pending"),
+          ),
+        )
+        .for("update");
+      if (!request) throw new NotFoundException("Request not found");
+
+      const activeMembers = await tx
+        .select({ userId: groupMembers.userId })
+        .from(groupMembers)
+        .where(
+          and(
+            eq(groupMembers.groupId, groupId),
+            eq(groupMembers.status, "active"),
+          ),
+        );
+      if (activeMembers.some((m) => m.userId === request.userId)) {
+        throw new ConflictException("Already a member of this group");
+      }
+      if (joinRejection(group.category, activeMembers.length) === "full") {
+        throw new ConflictException(fullMessage(group.category));
+      }
+
+      // The snapshot is a proposal, applied here exactly as acceptInvite
+      // applies a live override: category defaults, then what they chose.
+      const shareConfig: GroupShareConfig = {
+        ...shareDefaultsFor(group.category, "member"),
+        ...request.shareConfig,
+      };
+      const [membership] = await tx
+        .insert(groupMembers)
+        .values({
+          id: uuidv7(),
+          groupId,
+          userId: request.userId,
+          role: "member",
+          shareConfig,
+        })
+        .returning();
+      await tx
+        .update(groupJoinRequests)
+        .set({ status: "approved", decidedAt: new Date(), decidedBy: callerId })
+        .where(eq(groupJoinRequests.id, request.id));
+      return { membership, requesterId: request.userId };
+    });
+
+    void this.notifications.sendToUser(result.requesterId, {
+      title: `You're in ${group.name}`,
+      body: "Your request to join was approved",
+      data: { kind: "group_request_approved", groupId },
+    });
+
+    return {
+      group: toGroupDto(group),
+      membership: toMembershipDto(result.membership),
+    };
+  }
+
+  /** Decline a request. No notification: a silent no is kinder than a ping. */
+  async declineJoinRequest(
+    callerId: string,
+    groupId: string,
+    requestId: string,
+  ): Promise<void> {
+    await this.requireApprover(callerId, groupId);
+    const updated = await this.db
+      .update(groupJoinRequests)
+      .set({ status: "declined", decidedAt: new Date(), decidedBy: callerId })
+      .where(
+        and(
+          eq(groupJoinRequests.id, requestId),
+          eq(groupJoinRequests.groupId, groupId),
+          eq(groupJoinRequests.status, "pending"),
+        ),
+      )
+      .returning({ id: groupJoinRequests.id });
+    if (updated.length === 0) throw new NotFoundException("Request not found");
+  }
+
+  /** Withdraw my own request. Scoped to the author, so only they can. */
+  async cancelJoinRequest(userId: string, requestId: string): Promise<void> {
+    const updated = await this.db
+      .update(groupJoinRequests)
+      .set({ status: "cancelled", decidedAt: new Date() })
+      .where(
+        and(
+          eq(groupJoinRequests.id, requestId),
+          eq(groupJoinRequests.userId, userId),
+          eq(groupJoinRequests.status, "pending"),
+        ),
+      )
+      .returning({ id: groupJoinRequests.id });
+    if (updated.length === 0) throw new NotFoundException("Request not found");
+  }
+
+  /**
+   * The caller's membership when they can decide requests, else 403 — or the
+   * usual 404 when they aren't in the group at all.
+   */
+  private async requireApprover(
+    callerId: string,
+    groupId: string,
+  ): Promise<{ group: GroupRow; membership: MemberRow }> {
+    const row = await this.requireMembership(groupId, callerId);
+    const allowed =
+      row.membership.role === "owner" ||
+      row.membership.role === "admin" ||
+      isCoach(row.group, row.membership);
+    if (!allowed) {
+      throw new ForbiddenException(
+        "Only owners, admins, or coaches can decide requests",
+      );
+    }
+    return row;
+  }
+
+  /** Tell everyone who can act on it. Names only — see PushPayload. */
+  private async notifyApprovers(
+    group: GroupRow,
+    requesterId: string,
+    requestId: string,
+  ): Promise<void> {
+    try {
+      const [requester] = await this.db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, requesterId))
+        .limit(1);
+      const approvers = await this.db
+        .select({ userId: groupMembers.userId, role: groupMembers.role })
+        .from(groupMembers)
+        .where(
+          and(
+            eq(groupMembers.groupId, group.id),
+            eq(groupMembers.status, "active"),
+          ),
+        );
+      const payload = {
+        title: `${requester?.name ?? "Someone"} wants to join`,
+        body: group.name,
+        data: { kind: "group_join_request" as const, groupId: group.id, requestId },
+      };
+      await Promise.all(
+        approvers
+          .filter(
+            (m) =>
+              m.role === "owner" ||
+              m.role === "admin" ||
+              (group.category === "trainer" && m.role === "coach"),
+          )
+          .map((m) => this.notifications.sendToUser(m.userId, payload)),
+      );
+    } catch {
+      // Same contract as every other send: a notification is an extra.
+    }
+  }
+
+  /** Decline an invitation addressed to me. Distinct from the sender revoking. */
+  async declineInvitation(userId: string, invitationId: string): Promise<void> {
+    await this.loadLiveInvitation(this.db, invitationId, userId);
+    await this.db
+      .update(groupInvites)
+      .set({ declinedAt: new Date() })
+      .where(
+        and(
+          eq(groupInvites.id, invitationId),
+          eq(groupInvites.invitedUserId, userId),
+          isNull(groupInvites.declinedAt),
+        ),
+      );
   }
 
   async updateMyMembership(
@@ -674,6 +1322,10 @@ export class GroupsService {
   /**
    * Invite + its live group by token. Unknown tokens and deleted groups 404;
    * revoked/expired/exhausted invites 410 so the join screen can say why.
+   *
+   * Link invites only. A direct invitation's token is never handed out, so a
+   * caller presenting one got it some other way — 404 rather than 403, which
+   * would confirm the token is real.
    */
   private async loadLiveInvite(
     db: DbExecutor,
@@ -684,14 +1336,56 @@ export class GroupsService {
       .select({ invite: groupInvites, group: groups })
       .from(groupInvites)
       .innerJoin(groups, eq(groupInvites.groupId, groups.id))
-      .where(and(eq(groupInvites.token, token), isNull(groups.deletedAt)));
+      .where(
+        and(
+          eq(groupInvites.token, token),
+          eq(groupInvites.kind, "link"),
+          isNull(groups.deletedAt),
+        ),
+      );
     const [row] = opts.forUpdate
       ? await query.for("update", { of: groupInvites })
       : await query;
     if (!row) throw new NotFoundException("Invite not found");
+    return this.assertLive(row);
+  }
+
+  /**
+   * A direct invitation + its live group, by id, for the person it names.
+   *
+   * The authorization that makes a targeted invitation targeted. Anyone who
+   * isn't `invited_user_id` gets the same 404 as an unknown id — matching
+   * `requireMembership`, where a non-member can't even learn a group exists.
+   */
+  private async loadLiveInvitation(
+    db: DbExecutor,
+    invitationId: string,
+    userId: string,
+    opts: { forUpdate?: boolean } = {},
+  ): Promise<{ invite: InviteRow; group: GroupRow }> {
+    const query = db
+      .select({ invite: groupInvites, group: groups })
+      .from(groupInvites)
+      .innerJoin(groups, eq(groupInvites.groupId, groups.id))
+      .where(
+        and(
+          eq(groupInvites.id, invitationId),
+          eq(groupInvites.kind, "direct"),
+          eq(groupInvites.invitedUserId, userId),
+          isNull(groups.deletedAt),
+        ),
+      );
+    const [row] = opts.forUpdate
+      ? await query.for("update", { of: groupInvites })
+      : await query;
+    if (!row) throw new NotFoundException("Invitation not found");
+    return this.assertLive(row);
+  }
+
+  private assertLive(row: { invite: InviteRow; group: GroupRow }) {
     const rejection = inviteRejection(row.invite);
     if (rejection !== null) {
-      throw new GoneException(`Invite ${rejection}`);
+      throw new GoneException(inviteRejectionMessage(rejection, row.invite.kind));
     }
     return row;
   }

@@ -1,15 +1,21 @@
 import type {
   AcceptGroupInviteResponse,
   CreateGroupInteractionResponse,
+  CreateGroupInvitationResponse,
   CreateGroupInviteResponse,
   CreateGroupResponse,
   GroupFeedResponse,
+  GroupInvitationsResponse,
+  GroupJoinRequestsResponse,
   GroupInvitePreviewResponse,
   GroupLeaderboardResponse,
   GroupMemberDayResponse,
   GroupRosterResponse,
   GroupsListResponse,
+  MyInvitationsResponse,
   PutMemberTargetsResponse,
+  ReceivedInvitationDto,
+  RequestToJoinResponse,
   UpdateMyMembershipResponse,
 } from "@metabolizm/shared";
 import {
@@ -31,6 +37,7 @@ import { GroupsReadService } from "./groups.read.service";
 import {
   acceptGroupInviteSchema,
   createGroupInteractionSchema,
+  createGroupInvitationSchema,
   createGroupInviteSchema,
   createGroupSchema,
   dateParamSchema,
@@ -39,15 +46,18 @@ import {
   idParamSchema,
   inviteTokenParamSchema,
   putMemberTargetsSchema,
+  requestToJoinSchema,
   transferOwnershipSchema,
   updateMyMembershipSchema,
   type AcceptGroupInviteInput,
   type CreateGroupInput,
   type CreateGroupInteractionInput,
+  type CreateGroupInvitationInput,
   type CreateGroupInviteInput,
   type GroupFeedQuery,
   type GroupLeaderboardQuery,
   type PutMemberTargetsInput,
+  type RequestToJoinInput,
   type TransferOwnershipInput,
   type UpdateMyMembershipInput,
 } from "./groups.schemas";
@@ -97,6 +107,122 @@ export class GroupsController {
     @Param("inviteId", new ZodValidationPipe(idParamSchema)) inviteId: string,
   ): Promise<void> {
     await this.groups.revokeInvite(this.caller.requireUserId(), id, inviteId);
+  }
+
+  /**
+   * Invitations addressed to me. Two static segments, so it can't be confused
+   * with `groups/:id/invitations` below.
+   */
+  @Get("groups/invitations")
+  async myInvitations(): Promise<MyInvitationsResponse> {
+    return this.groups.listMyInvitations(this.caller.requireUserId());
+  }
+
+  @Get("groups/invitations/:invitationId")
+  async myInvitation(
+    @Param("invitationId", new ZodValidationPipe(idParamSchema))
+    invitationId: string,
+  ): Promise<{ invitation: ReceivedInvitationDto }> {
+    return this.groups.getMyInvitation(
+      this.caller.requireUserId(),
+      invitationId,
+    );
+  }
+
+  @Post("groups/invitations/:invitationId/accept")
+  @HttpCode(200)
+  async acceptInvitation(
+    @Param("invitationId", new ZodValidationPipe(idParamSchema))
+    invitationId: string,
+    @Body(new ZodValidationPipe(acceptGroupInviteSchema))
+    body: AcceptGroupInviteInput,
+  ): Promise<AcceptGroupInviteResponse> {
+    return this.groups.acceptInvitation(
+      this.caller.requireUserId(),
+      invitationId,
+      body,
+    );
+  }
+
+  @Post("groups/invitations/:invitationId/decline")
+  @HttpCode(204)
+  async declineInvitation(
+    @Param("invitationId", new ZodValidationPipe(idParamSchema))
+    invitationId: string,
+  ): Promise<void> {
+    await this.groups.declineInvitation(
+      this.caller.requireUserId(),
+      invitationId,
+    );
+  }
+
+  /** Invite one person by email. Idempotent, so this is also Resend. */
+  @Post("groups/:id/invitations")
+  async createInvitation(
+    @Param("id", new ZodValidationPipe(idParamSchema)) id: string,
+    @Body(new ZodValidationPipe(createGroupInvitationSchema))
+    body: CreateGroupInvitationInput,
+  ): Promise<CreateGroupInvitationResponse> {
+    return this.groups.createInvitation(this.caller.requireUserId(), id, body);
+  }
+
+  @Get("groups/:id/invitations")
+  async groupInvitations(
+    @Param("id", new ZodValidationPipe(idParamSchema)) id: string,
+  ): Promise<GroupInvitationsResponse> {
+    return this.groups.listGroupInvitations(this.caller.requireUserId(), id);
+  }
+
+  /** Ask to join via an approval-gated link, instead of joining outright. */
+  @Post("invites/:token/request")
+  @HttpCode(200)
+  async requestToJoin(
+    @Param("token", new ZodValidationPipe(inviteTokenParamSchema)) token: string,
+    @Body(new ZodValidationPipe(requestToJoinSchema)) body: RequestToJoinInput,
+  ): Promise<RequestToJoinResponse> {
+    return this.groups.requestToJoin(this.caller.requireUserId(), token, body);
+  }
+
+  /** Withdraw my own request. Static segment, so it can't shadow `:id`. */
+  @Post("groups/requests/:requestId/cancel")
+  @HttpCode(204)
+  async cancelJoinRequest(
+    @Param("requestId", new ZodValidationPipe(idParamSchema)) requestId: string,
+  ): Promise<void> {
+    await this.groups.cancelJoinRequest(this.caller.requireUserId(), requestId);
+  }
+
+  @Get("groups/:id/requests")
+  async groupRequests(
+    @Param("id", new ZodValidationPipe(idParamSchema)) id: string,
+  ): Promise<GroupJoinRequestsResponse> {
+    return this.groups.listJoinRequests(this.caller.requireUserId(), id);
+  }
+
+  @Post("groups/:id/requests/:requestId/approve")
+  @HttpCode(200)
+  async approveJoinRequest(
+    @Param("id", new ZodValidationPipe(idParamSchema)) id: string,
+    @Param("requestId", new ZodValidationPipe(idParamSchema)) requestId: string,
+  ): Promise<AcceptGroupInviteResponse> {
+    return this.groups.approveJoinRequest(
+      this.caller.requireUserId(),
+      id,
+      requestId,
+    );
+  }
+
+  @Post("groups/:id/requests/:requestId/decline")
+  @HttpCode(204)
+  async declineJoinRequest(
+    @Param("id", new ZodValidationPipe(idParamSchema)) id: string,
+    @Param("requestId", new ZodValidationPipe(idParamSchema)) requestId: string,
+  ): Promise<void> {
+    await this.groups.declineJoinRequest(
+      this.caller.requireUserId(),
+      id,
+      requestId,
+    );
   }
 
   /** Consent screen — public: the joiner isn't a member yet. */

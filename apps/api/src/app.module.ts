@@ -9,6 +9,7 @@ import { DbModule } from "./db/db.module";
 import { DiaryModule } from "./diary/diary.module";
 import { GroupsModule } from "./groups/groups.module";
 import { HealthModule } from "./health/health.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { SummariesModule } from "./summaries/summaries.module";
 import { SyncModule } from "./sync/sync.module";
 import { UsersModule } from "./users/users.module";
@@ -26,6 +27,7 @@ import { WeightModule } from "./weight/weight.module";
     SummariesModule,
     WeightModule,
     GroupsModule,
+    NotificationsModule,
     SyncModule,
     BillingModule,
   ],

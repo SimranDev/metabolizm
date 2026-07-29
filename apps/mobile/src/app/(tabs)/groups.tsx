@@ -1,14 +1,17 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { GroupCard } from '@/components/groups/group-card';
+import { InvitationCard } from '@/components/groups/invitation-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { IconButton } from '@/components/ui/icon-button';
+import { haptics } from '@/lib/haptics';
+import { registerForPush } from '@/lib/push';
 import { useGroups } from '@/store/groups';
 import { BottomTabInset, Radius, Spacing, useTheme } from '@/theme';
 
@@ -20,17 +23,46 @@ import { BottomTabInset, Radius, Spacing, useTheme } from '@/theme';
 export default function GroupsScreen() {
   const router = useRouter();
   const groups = useGroups((s) => s.groups);
+  const invitations = useGroups((s) => s.invitations);
   const status = useGroups((s) => s.status);
   const error = useGroups((s) => s.error);
   const refresh = useGroups((s) => s.refresh);
+  const refreshInvitations = useGroups((s) => s.refreshInvitations);
+  const declineInvitation = useGroups((s) => s.declineInvitation);
+
+  const [decliningId, setDecliningId] = useState<string | null>(null);
+
+  const onDecline = async (id: string) => {
+    setDecliningId(id);
+    try {
+      await declineInvitation(id);
+      haptics.success();
+    } catch {
+      // The card stays put and the next focus refresh reconciles it — a
+      // failed decline shouldn't push an error banner onto the tab.
+    } finally {
+      setDecliningId(null);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
       void refresh();
-    }, [refresh]),
+      void refreshInvitations();
+    }, [refresh, refreshInvitations]),
   );
 
-  const empty = groups.length === 0;
+  // Ask for notifications here, not at launch. Groups is the only thing that
+  // sends any, so this is the one screen where the prompt has a visible reason
+  // behind it — and the OS only ever offers it once.
+  useEffect(() => {
+    void registerForPush();
+  }, []);
+
+  // An invitation counts as content. Otherwise someone invited to their first
+  // group lands on the empty state, which replaces the list entirely, and the
+  // invitation they were notified about is nowhere on the screen.
+  const empty = groups.length === 0 && invitations.length === 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -73,6 +105,36 @@ export default function GroupsScreen() {
             </ThemedText>
           ) : null}
 
+          {invitations.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="micro" themeColor="textTertiary">
+                {invitations.length === 1 ? 'Invitation' : `Invitations · ${invitations.length}`}
+              </ThemedText>
+              {invitations.slice(0, INVITATIONS_ON_TAB).map((invitation) => (
+                <InvitationCard
+                  key={invitation.id}
+                  invitation={invitation}
+                  declining={decliningId === invitation.id}
+                  onReview={() =>
+                    router.push({
+                      pathname: '/join-group',
+                      params: { invitationId: invitation.id },
+                    })
+                  }
+                  onDecline={() => void onDecline(invitation.id)}
+                />
+              ))}
+              {invitations.length > INVITATIONS_ON_TAB ? (
+                <Button
+                  label={`See all ${invitations.length} invitations`}
+                  variant="ghost"
+                  onPress={() => router.push('/invitations')}
+                  fullWidth
+                />
+              ) : null}
+            </View>
+          ) : null}
+
           {groups.map((group) => (
             <GroupCard
               key={group.id}
@@ -87,6 +149,9 @@ export default function GroupsScreen() {
     </ThemedView>
   );
 }
+
+/** Beyond this the tab becomes an inbox; the rest live on /invitations. */
+const INVITATIONS_ON_TAB = 2;
 
 function EmptyState({
   onCreate,
@@ -171,6 +236,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.s24,
     paddingBottom: BottomTabInset + Spacing.s24,
     gap: Spacing.s16,
+  },
+  section: {
+    gap: Spacing.s8,
   },
   center: {
     flex: 1,

@@ -1,9 +1,18 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
+import { useGroups } from '@/store/groups';
 import { Fonts, useTheme } from '@/theme';
 
 export default function AppTabs() {
   const { colors } = useTheme();
+  // Things waiting on ME: invitations to answer, plus requests I can decide.
+  // `pendingRequestCount` is already 0 for a plain member, so this can't count
+  // something the user has no way to act on.
+  const waiting = useGroups(
+    (s) =>
+      s.invitations.length +
+      s.groups.reduce((sum, g) => sum + g.pendingRequestCount, 0),
+  );
 
   return (
     <NativeTabs
@@ -30,6 +39,11 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="groups">
         <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="person.2.fill" md="group" />
+        {/* `hidden` at zero rather than the string "0": absence is not zero,
+            the same promise the rest of Groups makes. */}
+        <NativeTabs.Trigger.Badge hidden={waiting === 0}>
+          {waiting > 0 ? String(waiting) : undefined}
+        </NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="recipes">

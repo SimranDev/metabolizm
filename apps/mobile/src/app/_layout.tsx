@@ -14,6 +14,8 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
+import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +24,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { usersApi } from '@/lib/api';
+import { routeFromNotification } from '@/lib/push';
 import { initDayRollover } from '@/store/diary';
 import { useProfile, useProfileHydrated } from '@/store/profile';
 import { ThemeProvider, useTheme } from '@/theme';
@@ -39,6 +42,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const hydrated = useProfileHydrated();
   const onboardingComplete = useProfile((s) => s.onboardingComplete);
+  const router = useRouter();
   const [fontsLoaded, fontError] = useFonts({
     SpaceGrotesk_400Regular,
     SpaceGrotesk_500Medium,
@@ -69,6 +73,32 @@ export default function RootLayout() {
     usersApi.pushDeviceTimezone();
     usersApi.pushDeviceRegion();
   }, []);
+
+  // Tapping a notification. Two sources, because a tap that launched the app
+  // cold has already happened by the time any listener could attach:
+  // `getLastNotificationResponseAsync` catches that one, the subscription
+  // catches every tap while the app is running.
+  useEffect(() => {
+    if (!onboardingComplete) return;
+
+    let handled = false;
+    const go = (response: Notifications.NotificationResponse | null) => {
+      const route = routeFromNotification(response);
+      // Guarded on onboardingComplete above: /invitations lives inside
+      // Stack.Protected, so navigating there mid-onboarding targets a screen
+      // that isn't mounted.
+      if (!route || handled) return;
+      handled = true;
+      router.push('/invitations');
+    };
+
+    void Notifications.getLastNotificationResponseAsync().then(go);
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      handled = false;
+      go(response);
+    });
+    return () => subscription.remove();
+  }, [onboardingComplete, router]);
 
   // Hold the native splash until fonts AND the persisted profile are ready, so we
   // never flash the wrong route (onboarding vs. app) before hydration completes.
@@ -102,6 +132,11 @@ export default function RootLayout() {
             <Stack.Screen name="member-day" />
             <Stack.Screen name="create-group" />
             <Stack.Screen name="join-group" />
+            {/* Invitations: the inbox, the send form, and a group's sent list.
+                `invitations` is also where a notification tap will land. */}
+            <Stack.Screen name="invitations" />
+            <Stack.Screen name="invite-member" />
+            <Stack.Screen name="group-invites" />
             <Stack.Screen name="group-sharing" options={{ presentation: 'modal' }} />
             {/* Profile & settings — reached from the AppHeader's profile
                 button, not a tab: the tab bar is for what you open daily.

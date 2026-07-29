@@ -11,17 +11,23 @@
 import type {
   AcceptGroupInviteResponse,
   CreateGroupInteractionResponse,
+  CreateGroupInvitationResponse,
   CreateGroupInviteResponse,
   CreateGroupResponse,
   GroupCategory,
   GroupFeedResponse,
   GroupInteractionKind,
+  GroupInvitationsResponse,
+  GroupJoinRequestsResponse,
   GroupInvitePreviewResponse,
   GroupLeaderboardResponse,
   GroupMemberDayResponse,
   GroupRosterResponse,
   GroupShareConfigPatch,
   GroupsListResponse,
+  MyInvitationsResponse,
+  ReceivedInvitationDto,
+  RequestToJoinResponse,
   UpdateMyMembershipResponse,
 } from "@metabolizm/shared";
 
@@ -54,7 +60,12 @@ export function leaveGroup(groupId: string, opts?: Signal): Promise<void> {
 
 export function createInvite(
   groupId: string,
-  input: { ttlHours?: number; maxUses?: number | null } = {},
+  input: {
+    ttlHours?: number;
+    maxUses?: number | null;
+    /** Opening the link asks to join instead of joining outright. */
+    requiresApproval?: boolean;
+  } = {},
   opts?: Signal,
 ): Promise<CreateGroupInviteResponse> {
   return apiRequest(`/groups/${groupId}/invites`, {
@@ -84,6 +95,151 @@ export function acceptInvite(
   return apiRequest(`/invites/${encodeURIComponent(token)}/accept`, {
     method: "POST",
     body: shareConfig ? { shareConfig } : {},
+    ...opts,
+  });
+}
+
+/** Withdraw an invite the group sent. Bodyless — see `leaveGroup`. */
+export function revokeInvite(
+  groupId: string,
+  inviteId: string,
+  opts?: Signal,
+): Promise<void> {
+  return apiRequest(`/groups/${groupId}/invites/${inviteId}`, {
+    method: "DELETE",
+    ...opts,
+  });
+}
+
+/**
+ * Invite one person by the email they signed up with.
+ *
+ * Idempotent server-side: inviting the same address again refreshes the
+ * existing invitation rather than minting a second, so this is also Resend.
+ * Rejects with 404 when no account uses the address — the caller should show
+ * that message rather than pretending it worked.
+ */
+export function createInvitation(
+  groupId: string,
+  email: string,
+  opts?: Signal,
+): Promise<CreateGroupInvitationResponse> {
+  return apiRequest(`/groups/${groupId}/invitations`, {
+    method: "POST",
+    body: { email },
+    ...opts,
+  });
+}
+
+/** Invitations sent by a group I own/admin/coach. */
+export function listGroupInvitations(
+  groupId: string,
+  opts?: Signal,
+): Promise<GroupInvitationsResponse> {
+  return apiRequest(`/groups/${groupId}/invitations`, opts);
+}
+
+/** Invitations waiting for me. */
+export function listMyInvitations(
+  opts?: Signal,
+): Promise<MyInvitationsResponse> {
+  return apiRequest("/groups/invitations", opts);
+}
+
+/**
+ * One invitation addressed to me — the consent screen's data source.
+ *
+ * Addressed by id, never by token: a direct invitation's token never leaves
+ * the server, which is what stops it being forwarded to someone the group
+ * didn't choose.
+ */
+export function getMyInvitation(
+  invitationId: string,
+  opts?: Signal,
+): Promise<{ invitation: ReceivedInvitationDto }> {
+  return apiRequest(`/groups/invitations/${invitationId}`, opts);
+}
+
+/** `shareConfig` overrides only the toggles changed on the consent screen. */
+export function acceptInvitation(
+  invitationId: string,
+  shareConfig?: GroupShareConfigPatch,
+  opts?: Signal,
+): Promise<AcceptGroupInviteResponse> {
+  return apiRequest(`/groups/invitations/${invitationId}/accept`, {
+    method: "POST",
+    body: shareConfig ? { shareConfig } : {},
+    ...opts,
+  });
+}
+
+/** Decline an invitation addressed to me. Bodyless — see `leaveGroup`. */
+export function declineInvitation(
+  invitationId: string,
+  opts?: Signal,
+): Promise<void> {
+  return apiRequest(`/groups/invitations/${invitationId}/decline`, {
+    method: "POST",
+    ...opts,
+  });
+}
+
+/**
+ * Ask to join through an approval-gated link.
+ *
+ * The consent screen shows `requiresApproval` from the preview and offers this
+ * instead of Accept. Nothing is shared until somebody approves.
+ */
+export function requestToJoin(
+  token: string,
+  shareConfig?: GroupShareConfigPatch,
+  opts?: Signal,
+): Promise<RequestToJoinResponse> {
+  return apiRequest(`/invites/${encodeURIComponent(token)}/request`, {
+    method: "POST",
+    body: shareConfig ? { shareConfig } : {},
+    ...opts,
+  });
+}
+
+/** Open requests for a group I own/admin/coach. */
+export function listJoinRequests(
+  groupId: string,
+  opts?: Signal,
+): Promise<GroupJoinRequestsResponse> {
+  return apiRequest(`/groups/${groupId}/requests`, opts);
+}
+
+export function approveJoinRequest(
+  groupId: string,
+  requestId: string,
+  opts?: Signal,
+): Promise<AcceptGroupInviteResponse> {
+  return apiRequest(`/groups/${groupId}/requests/${requestId}/approve`, {
+    method: "POST",
+    ...opts,
+  });
+}
+
+/** Bodyless — see `leaveGroup`. */
+export function declineJoinRequest(
+  groupId: string,
+  requestId: string,
+  opts?: Signal,
+): Promise<void> {
+  return apiRequest(`/groups/${groupId}/requests/${requestId}/decline`, {
+    method: "POST",
+    ...opts,
+  });
+}
+
+/** Withdraw my own request. */
+export function cancelJoinRequest(
+  requestId: string,
+  opts?: Signal,
+): Promise<void> {
+  return apiRequest(`/groups/requests/${requestId}/cancel`, {
+    method: "POST",
     ...opts,
   });
 }

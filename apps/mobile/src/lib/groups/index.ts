@@ -8,6 +8,7 @@ import type {
   GroupCategory,
   GroupMemberDayCardDto,
   GroupShareConfig,
+  InvitationState,
 } from "@metabolizm/shared";
 
 /** Display order for the category picker. */
@@ -197,6 +198,41 @@ export function parseInviteToken(input: string): string | null {
     : trimmed;
   const token = candidate.split(/[?#]/)[0];
   return /^[A-Za-z0-9_-]{8,64}$/.test(token) ? token : null;
+}
+
+/**
+ * How an invitation the group sent ended up.
+ *
+ * `pending` is the only one that reads as an instruction rather than a fact,
+ * so it names what the recipient still has to do.
+ */
+export const INVITATION_STATE_LABEL: Record<InvitationState, string> = {
+  pending: "Waiting to be accepted",
+  accepted: "Joined",
+  declined: "Declined",
+  revoked: "Withdrawn",
+  expired: "Expired",
+};
+
+/** Only `pending` can still be withdrawn or nudged; the rest are history. */
+export const isInvitationLive = (state: InvitationState): boolean =>
+  state === "pending";
+
+/**
+ * "in 6 days" / "in 3 hours" / "today" — coarse on purpose.
+ *
+ * An invitation lives a week, so a countdown to the minute would be precision
+ * about something nobody is waiting on. Past deadlines read as "expired"
+ * rather than a negative, because the list shows those as history anyway.
+ */
+export function expiryLabel(expiresAt: string, now = new Date()): string {
+  const ms = new Date(expiresAt).getTime() - now.getTime();
+  if (Number.isNaN(ms) || ms <= 0) return "expired";
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 1) return "expires within the hour";
+  if (hours < 24) return `expires in ${hours} ${hours === 1 ? "hour" : "hours"}`;
+  const days = Math.round(hours / 24);
+  return `expires in ${days} ${days === 1 ? "day" : "days"}`;
 }
 
 /**

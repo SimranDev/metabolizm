@@ -1,7 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { FeedList } from '@/components/groups/feed-list';
 import { LeaderboardList } from '@/components/groups/leaderboard-list';
@@ -15,7 +15,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { useRequest } from '@/hooks/use-request';
 import { groupsApi } from '@/lib/api';
 import { useCurrentUserId } from '@/lib/auth';
-import { CATEGORY_LABEL, inviteLink } from '@/lib/groups';
+import { CATEGORY_LABEL } from '@/lib/groups';
 import { useGroups, useGroupSummary } from '@/store/groups';
 import { Spacing, useTheme } from '@/theme';
 
@@ -71,18 +71,14 @@ export default function GroupDetailScreen() {
     }, [reloadFeed]),
   );
 
-  const invite = async () => {
-    try {
-      const { invite: created } = await groupsApi.createInvite(groupId, {
-        ttlHours: 168,
-      });
-      await Share.share({
-        message: `Join me on Metabolizm — you'll see exactly what you'd share before joining: ${inviteLink(created.token)}`,
-      });
-    } catch {
-      // Sharing is a convenience; a failure leaves the group untouched.
-    }
-  };
+  // Inviting is its own screen now: email is the primary path (it reaches the
+  // person inside the app), with the share link kept there as the fallback for
+  // someone who has no account yet.
+  const invite = () =>
+    router.push({
+      pathname: '/invite-member',
+      params: { groupId, groupName: summary?.name },
+    });
 
   const options = tabOptions(isCoach, summary?.category === 'family');
   // The summary can arrive after first paint (deep link or cold start), which
@@ -105,7 +101,7 @@ export default function GroupDetailScreen() {
           <IconButton
             variant="plain"
             accessibilityLabel="Invite someone"
-            onPress={() => void invite()}
+            onPress={invite}
             icon={(color) => (
               <SymbolView
                 name={{ ios: 'person.badge.plus', android: 'person_add' }}
@@ -154,7 +150,7 @@ export default function GroupDetailScreen() {
                 onEditSharing={() =>
                   router.push({ pathname: '/group-sharing', params: { groupId } })
                 }
-                onInvite={() => void invite()}
+                onInvite={invite}
               />
             ) : null}
           </>

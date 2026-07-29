@@ -141,14 +141,50 @@ export const createGroupInviteSchema = z.object({
   /** Invite lifetime in hours; default one week, max 30 days. */
   ttlHours: z.number().int().min(1).max(720).default(168),
   maxUses: z.number().int().min(1).max(500).nullable().default(null),
+  /**
+   * Whether opening this link asks to join rather than joining outright.
+   * Links only — a person-to-person invitation is already a decision about
+   * that person, and the database CHECK refuses the combination.
+   */
+  requiresApproval: z.boolean().default(false),
 });
 export type CreateGroupInviteInput = z.output<typeof createGroupInviteSchema>;
+
+/**
+ * Ask to join through an approval-gated link.
+ *
+ * Same shape as accepting: the toggles the requester changed on the consent
+ * screen, held until a decision lands and merged onto the category defaults
+ * at approval.
+ */
+export const requestToJoinSchema = z.object({
+  shareConfig: groupSharePatchSchema.optional(),
+});
+export type RequestToJoinInput = z.output<typeof requestToJoinSchema>;
 
 export const acceptGroupInviteSchema = z.object({
   /** Overrides merged onto the category defaults shown on the consent screen. */
   shareConfig: groupSharePatchSchema.optional(),
 });
 export type AcceptGroupInviteInput = z.output<typeof acceptGroupInviteSchema>;
+
+/**
+ * Invite one person by the address they signed up with.
+ *
+ * Lowercased here so the server's `lower(email)` lookup and everything stored
+ * on the row agree on one form — an address is case-insensitive in practice,
+ * and comparing it as typed silently fails to find the account.
+ */
+export const createGroupInvitationSchema = z.object({
+  email: z
+    .email()
+    .trim()
+    .toLowerCase()
+    .max(254 /* RFC 5321 */),
+});
+export type CreateGroupInvitationInput = z.output<
+  typeof createGroupInvitationSchema
+>;
 
 export const updateMyMembershipSchema = z
   .object({

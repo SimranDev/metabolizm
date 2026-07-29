@@ -233,6 +233,72 @@ wrong.
 
 ---
 
+## 3b. Push notification credentials
+
+**Not blocking for anything else.** Without this the app works exactly as it
+does today and group invitations still arrive — they just wait in the
+Invitations inbox instead of announcing themselves. `registerForPush` swallows
+every failure by design, so an unconfigured build is silent, not broken.
+
+Push is the one part of the stack that cannot be tested from this machine
+against a simulator: **the Android emulator needs a Play-Store system image**
+(FCM is delivered by Google Play services), and iOS needs a real device or
+Xcode 14+/iOS 16+. Expo Go cannot receive push on Android at all since SDK 53,
+which is already moot here — native tabs and `expo-symbols` require a dev build
+regardless.
+
+### Android — FCM v1
+
+Legacy FCM server keys are dead; it has to be the v1 service account.
+
+1. Firebase console → create (or open) a project → add an **Android** app with
+   package `com.metabolizm.app`.
+2. Download **`google-services.json`** and put it at
+   `apps/mobile/google-services.json`. Reference it from
+   [`app.json`](../apps/mobile/app.json) as `android.googleServicesFile`.
+3. Firebase → Project settings → **Service accounts** → *Generate new private
+   key*. Upload that JSON to EAS:
+
+   ```bash
+   npx eas-cli@latest credentials -p android      # → Push Notifications → FCM V1
+   ```
+
+   Interactive TUI only, same as the keystore step above.
+
+> **The gitignore trap, again.** EAS archives the *git tree*, so a gitignored
+> `google-services.json` never reaches the build — the same mechanism that puts
+> `EXPO_PUBLIC_*` in `eas.json` rather than `.env` (see §4). Either commit it
+> (it contains no secret — it is shipped inside every APK) or upload it as an
+> EAS **file** environment variable and point `googleServicesFile` at that.
+> The *service account* key is a real secret and must never be committed.
+
+### iOS — APNs
+
+```bash
+npx eas-cli@latest credentials -p ios             # → Push Notifications Key
+```
+
+Let EAS create and manage the `.p8` unless you already have one. The
+`aps-environment` entitlement is added by the `expo-notifications` config
+plugin — nothing to set by hand.
+
+### Verifying
+
+`expo-notifications` is a native module, so this needs a **rebuild**
+(`pnpm android` / a fresh EAS build), not a Metro reload. On the device: open
+the **Groups** tab, accept the permission prompt, then check the row landed:
+
+```bash
+psql "$DATABASE_URL" -c "select platform, left(token, 24), last_seen_at from device_push_tokens;"
+```
+
+Then have another account invite you by email. Sign out and confirm the row is
+**gone** — `endSession` hands the token back before it drops the session
+cookie, and if that ever regresses the next person to sign in on that phone
+receives the previous account's notifications.
+
+---
+
 ## 4. EAS Build
 
 [`apps/mobile/eas.json`](../apps/mobile/eas.json) holds two profiles.

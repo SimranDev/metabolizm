@@ -15,6 +15,9 @@ import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/theme';
 
+// No invitation badge here: the count rides on NativeTabs.Trigger.Badge, which
+// this headless build has no equivalent for. Web is not a shipping target, so
+// the gap is recorded rather than reimplemented.
 export default function AppTabs() {
   return (
     <Tabs>

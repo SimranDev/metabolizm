@@ -8,6 +8,7 @@ import {
   dailySummaries,
   diaryEntries,
   groupInteractions,
+  groupJoinRequests,
   groupMembers,
   groups,
   users,
@@ -93,6 +94,9 @@ export class GroupsReadService {
         ),
       )
       .orderBy(asc(groupMembers.joinedAt));
+    // No memberships is a normal state, not an empty one: someone invited to
+    // their first group has no rows here and everything below (streak, member
+    // fan-out) would be work over an empty set.
     if (live.length === 0) return { groups: [] };
 
     const groupIds = live.map((m) => m.groupId);
@@ -128,6 +132,32 @@ export class GroupsReadService {
       today,
     );
 
+    // Open requests, counted once for every group I can decide them in. Only
+    // owners/admins/coaches can act on one, so a plain member's count stays 0
+    // rather than showing a badge that leads nowhere.
+    const approverGroupIds = live
+      .filter(
+        (m) =>
+          m.role === "owner" ||
+          m.role === "admin" ||
+          (m.category === "trainer" && m.role === "coach"),
+      )
+      .map((m) => m.groupId);
+    const pendingRequests = new Map<string, number>();
+    if (approverGroupIds.length > 0) {
+      const counts = await this.db
+        .select({ groupId: groupJoinRequests.groupId, value: count() })
+        .from(groupJoinRequests)
+        .where(
+          and(
+            inArray(groupJoinRequests.groupId, approverGroupIds),
+            eq(groupJoinRequests.status, "pending"),
+          ),
+        )
+        .groupBy(groupJoinRequests.groupId);
+      for (const row of counts) pendingRequests.set(row.groupId, row.value);
+    }
+
     const items: GroupListItemDto[] = [];
     for (const membership of live) {
       const roster = byGroup.get(membership.groupId) ?? [];
@@ -149,6 +179,7 @@ export class GroupsReadService {
           membership.lastSeenAt,
           roster.map((m) => m.userId),
         ),
+        pendingRequestCount: pendingRequests.get(membership.groupId) ?? 0,
       });
     }
     return { groups: items };
