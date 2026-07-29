@@ -19,6 +19,9 @@ A Health & Fitness app for **iOS and Android** — a "swiss-knife for fitness" w
 - Four-tab navigation (Log, Dashboard, Recipes, Profile) with a shared top header (plan icon · date · profile button).
 - Light/dark theming with the "Kinetic" design system (Space Grotesk / Instrument Sans).
 - Goal-based onboarding (BMR/TDEE plans), food search against the repo's own catalog API (`apps/api`), and an MMKV-persisted food diary; the remaining tabs are placeholders.
+- **Barcode scanning** with GTIN normalisation, so the same product scans identically as UPC-A or EAN-13; a store's own weight/price label is explained rather than reported as "not found".
+- **Regional food database** (NZ/AU/US/GB) — your region is prioritised in search, never used to hide food.
+- **User-created foods with a review queue** — anyone can add a food, and a shared one is searchable for everyone immediately, then reviewed afterwards by an internal admin tool. Entry warns about likely mistakes as you type (notably a kilojoule figure entered into a kcal field, which AU/NZ nutrition panels invite), and an unreviewed food is labelled as such rather than left ambiguous.
 
 ### Roadmap / ideas
 Water intake · weight & body-measurement trends with charts · TDEE/BMR calculators with adaptive goals · intermittent-fasting timer · workout/exercise logging with calories burned · saved meals, favorites & meal planning · streaks and reminder notifications · micronutrient targets & insights · progress photos · home-screen widgets · Apple Watch / Wear OS companion · CSV data export · goal-based onboarding · subscription tiers (free / pro / pro max).
