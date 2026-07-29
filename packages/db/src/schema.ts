@@ -1,4 +1,8 @@
-import type { GroupShareConfig, NutrientMap } from "@metabolizm/shared";
+import type {
+  FoodFlag,
+  GroupShareConfig,
+  NutrientMap,
+} from "@metabolizm/shared";
 import { sql } from "drizzle-orm";
 import {
   bigint,
@@ -35,6 +39,13 @@ export const users = pgTable("users", {
   image: text("image"),
   // IANA timezone name; drives each member's "today" in group reads.
   timezone: text("timezone").notNull().default("UTC"),
+  // ISO 3166-1 alpha-2, validated against SUPPORTED_REGIONS in
+  // @metabolizm/shared. Ranks catalog search (never filters it) — see
+  // regionRank in CatalogService.listFoods. Exactly like `timezone`: the
+  // `users` module is the ONLY writer, and the default is a fallback rather
+  // than an answer, so onboarding sets it explicitly from the device locale.
+  // A client that never sets it silently gets wrongly-ranked results.
+  region: text("region").notNull().default("NZ"),
   // Display preference only — every weight is stored in kilograms.
   weightUnit: weightUnitEnum("weight_unit").notNull().default("kg"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -124,6 +135,21 @@ export const foodSourceEnum = pgEnum("food_source", ["system", "custom"]);
 export const baseUnitEnum = pgEnum("base_unit", ["g", "ml"]);
 export const visibilityEnum = pgEnum("visibility", ["private", "public"]);
 
+// Moderation state of a catalog row. There is deliberately no staging table: a
+// public user food is live the moment it is created and is reviewed after the
+// fact, so "awaiting review" is a STATE on the row, not a different table —
+// diary_entries.food_id has to FK somewhere, and search would otherwise UNION
+// two identical shapes.
+//   rejected   = wrong and unfixable / spam. Excluded from search entirely,
+//                but still readable by id so reopening an old log entry works.
+//   needs_edit = wrong but salvageable. Stays public, stays flagged.
+export const foodReviewStatusEnum = pgEnum("food_review_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "needs_edit",
+]);
+
 // All macro/nutrient values are per 100 base units (g or ml), never per serving.
 export const foods = pgTable(
   "foods",
@@ -137,7 +163,16 @@ export const foods = pgTable(
     name: text("name").notNull(),
     brand: text("brand"),
     description: text("description"),
+    // ALWAYS GTIN-14, zero-left-padded (normalizeGtin in @metabolizm/shared).
+    // UPC-A, EAN-13, EAN-8 and ITF-14 all collapse to this one comparable
+    // form — storing them as scanned is what makes a US product entered as 12
+    // digits invisible to a 13-digit lookup of the same product.
     barcode: text("barcode"),
+    // ISO 3166-1 alpha-2 codes this food is sold in; a food is legitimately
+    // {AU,NZ} or {US,GB,AU,NZ}. EMPTY MEANS UNKNOWN, not "sold nowhere", and
+    // ranks neutrally — most of the catalog is unknown and penalising it would
+    // bury the entire USDA import for every non-US user.
+    markets: text("markets").array().notNull().default([]),
     // Provenance of imported system rows, e.g. "fdc:2262074"; null for user foods.
     sourceRef: text("source_ref"),
     source: foodSourceEnum("source").notNull().default("custom"),
@@ -172,7 +207,26 @@ export const foods = pgTable(
     }).notNull(),
     nutrients: jsonb("nutrients").$type<NutrientMap>().notNull().default({}),
     visibility: visibilityEnum("visibility").notNull().default("private"),
-    isVerified: boolean("is_verified").notNull().default(false),
+    // Replaces the removed is_verified boolean, which was a second source of truth
+    // for the same fact. "Verified" is now derived: review_status = 'approved'.
+    // Server-controlled — never settable through /v1/catalog.
+    reviewStatus: foodReviewStatusEnum("review_status")
+      .notNull()
+      .default("pending"),
+    // Triage heuristics stamped at write time by evaluateFoodFlags
+    // (@metabolizm/shared), plus the codes apps/api appends after a lookup.
+    reviewFlags: jsonb("review_flags")
+      .$type<FoodFlag[]>()
+      .notNull()
+      .default([]),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    // The `version` that was reviewed. An approved row edited afterwards has
+    // version > reviewed_version, which is what makes "approved, then quietly
+    // changed" visible rather than a laundering step.
+    reviewedVersion: bigint("reviewed_version", { mode: "number" }),
     popularity: integer("popularity").notNull().default(0),
     forkedFrom: uuid("forked_from").references((): AnyPgColumn => foods.id, {
       onDelete: "set null",
@@ -192,12 +246,92 @@ export const foods = pgTable(
     // Backs ILIKE '%q%' search; needs the pg_trgm extension (created in the
     // migration — drizzle-kit does not emit CREATE EXTENSION).
     index("foods_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
-    uniqueIndex("foods_barcode_active_uq")
+    // Only the PUBLIC namespace is contended. The old index was unique across
+    // every active row, which meant a user could not keep a private food
+    // carrying a barcode someone else had already published — they got a 409
+    // for a food only they could see, which is simply wrong.
+    uniqueIndex("foods_barcode_public_uq")
       .on(t.barcode)
-      .where(sql`barcode IS NOT NULL AND deleted_at IS NULL`),
+      .where(
+        sql`barcode IS NOT NULL AND visibility = 'public' AND deleted_at IS NULL`,
+      ),
+    index("foods_markets_gin_idx").using("gin", t.markets),
     uniqueIndex("foods_source_ref_active_uq")
       .on(t.sourceRef)
       .where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`),
+    // The admin review queue. Partial on purpose: the queue is a handful of
+    // rows against a catalog that is mostly approved system food, and this
+    // index stays proportional to the queue rather than to the catalog.
+    // Bare column names — `${t.x}` renders table-qualified, which Postgres
+    // normalizes away and drizzle-kit then reads back as phantom drift.
+    index("foods_review_queue_idx")
+      .on(t.createdAt)
+      .where(
+        sql`review_status = 'pending' AND visibility = 'public' AND owner_id IS NOT NULL AND deleted_at IS NULL`,
+      ),
+  ],
+);
+
+// Append-only audit trail of moderation decisions. Never updated, never
+// deleted: "who approved this, when, and against which version" has to survive
+// the food being edited afterwards, so the decision is a row rather than a
+// mutable column on foods.
+export const foodReviews = pgTable(
+  "food_reviews",
+  {
+    // App generates UUIDv7; gen_random_uuid() is only a fallback.
+    id: uuid("id").primaryKey().defaultRandom(),
+    foodId: uuid("food_id")
+      .notNull()
+      .references(() => foods.id, { onDelete: "cascade" }),
+    // foods.version at decision time — pins the decision to what was reviewed.
+    foodVersion: bigint("food_version", { mode: "number" }).notNull(),
+    // Null for a system-initiated transition (e.g. the auto-requeue a user
+    // report triggers), and for a human reviewer whose account was deleted.
+    reviewerId: uuid("reviewer_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    fromStatus: foodReviewStatusEnum("from_status").notNull(),
+    toStatus: foodReviewStatusEnum("to_status").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("food_reviews_food_created_idx").on(t.foodId, t.createdAt.desc())],
+);
+
+// User-submitted "this food looks wrong". Reporting a system food is allowed —
+// system rows can be wrong too — but reporting your own is rejected upstream.
+export const foodReports = pgTable(
+  "food_reports",
+  {
+    // App generates UUIDv7; gen_random_uuid() is only a fallback.
+    id: uuid("id").primaryKey().defaultRandom(),
+    foodId: uuid("food_id")
+      .notNull()
+      .references(() => foods.id, { onDelete: "cascade" }),
+    // Set null rather than cascade: the report is evidence about the food and
+    // outlives the reporter's account.
+    reporterId: uuid("reporter_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reason: text("reason").notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: uuid("resolved_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // One OPEN report per (food, reporter) — re-reporting the same food is a
+    // duplicate, but once resolved the same user may report it again.
+    uniqueIndex("food_reports_open_uq")
+      .on(t.foodId, t.reporterId)
+      .where(sql`resolved_at IS NULL`),
+    index("food_reports_food_idx").on(t.foodId),
   ],
 );
 

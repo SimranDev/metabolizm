@@ -5,6 +5,7 @@
  */
 
 import type { UserTargetDto } from "./groups";
+import type { Region } from "./regions";
 import type {
   ActivityLevel,
   Goal,
@@ -22,6 +23,12 @@ export type MeDto = {
   /** IANA timezone name. Drives entry dates, streaks, and group "today". */
   timezone: string;
   weightUnit: WeightUnit;
+  /**
+   * Food-database region. RANKS catalog search, never filters it. Same
+   * one-writer rule as `timezone`, and the same trap: the stored default is a
+   * fallback, not an answer, so onboarding sets it explicitly.
+   */
+  region: Region;
 };
 
 export type MeResponse = { user: MeDto };

@@ -67,6 +67,7 @@ export default function RootLayout() {
   // after sign-in/sign-up, when a session finally exists.
   useEffect(() => {
     usersApi.pushDeviceTimezone();
+    usersApi.pushDeviceRegion();
   }, []);
 
   // Hold the native splash until fonts AND the persisted profile are ready, so we
@@ -86,6 +87,12 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="add-food" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="food-detail" options={{ presentation: 'fullScreenModal' }} />
+            {/* Reached from the "Can't find it?" row at the bottom of search
+                (including the no-results state). Replaces itself with the
+                food it creates, so the created food's detail is not stranded
+                behind a create form in the back stack. */}
+            <Stack.Screen name="create-food" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="scan-barcode" options={{ presentation: 'fullScreenModal' }} />
             {/* Groups drill-downs push above the tabs — they carry their own
                 header, since the persistent AppHeader belongs to the tab group.
                 Create and join are pushes, not modals: both `replace` themselves
@@ -104,6 +111,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile/targets" />
             <Stack.Screen name="profile/goal" />
             <Stack.Screen name="profile/units" />
+            <Stack.Screen name="profile/region" />
             <Stack.Screen name="profile/appearance" />
             {/* The calendar. A native form sheet, so the OS owns the drag,
                 detents and dismiss — no bottom-sheet library in the bundle. */}

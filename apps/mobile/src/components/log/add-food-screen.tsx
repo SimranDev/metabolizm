@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { toMealId, useDiary } from "@/store/diary";
 import { useFoodSelection } from "@/store/food-selection";
 import { macroColor, Radius, Spacing, useTheme } from "@/theme";
 
-import type { DiaryFood } from "@metabolizm/shared";
+import type { DiaryFood, FoodListItemDto } from "@metabolizm/shared";
 
 import {
   FOOD_FILTERS,
@@ -34,8 +35,9 @@ type Props = {
 /**
  * Food-adding screen shown as a modal from the Log tab's "+" buttons. Search
  * hits the catalog API (see `useFoodSearch`); short/empty queries fall back to
- * the persisted recents list. The input methods (photo/voice/barcode) are
- * placeholders. "Add to {meal}" commits the multi-selection to the diary.
+ * the persisted recents list. Barcode opens the scanner route; photo and voice
+ * are still placeholders. "Add to {meal}" commits the multi-selection to the
+ * diary.
  */
 export function AddFoodScreen({ meal }: Props) {
   const router = useRouter();
@@ -80,6 +82,15 @@ export function AddFoodScreen({ meal }: Props) {
   const trimmed = query.trim();
   const showingSearch = trimmed.length >= MIN_QUERY_LENGTH;
   const list: DiaryFood[] = showingSearch ? items.map(toQuickAdd) : recentFoods;
+  // Live review state, keyed by food id. Only search rows have it: a recent is
+  // a snapshot of what was logged, and its badge is that snapshot's `verified`.
+  // A row that is public, not the caller's, and not approved gets a DESIGNED
+  // "unverified" chip rather than an absent badge — the same promise the
+  // groups UI and the day-states make, where a blank would read as a verdict
+  // the user has to guess at.
+  const trustById = new Map<string, TrustState>(
+    showingSearch ? items.map((i) => [i.id, trustOf(i)]) : [],
+  );
 
   const selected = Object.values(selectedItems);
   const selectedCalories = selected.reduce((sum, f) => sum + f.calories, 0);
@@ -105,7 +116,12 @@ export function AddFoodScreen({ meal }: Props) {
               icon={m.icon}
               label={m.label}
               active={method === m.id}
-              onPress={() => setMethod(m.id)}
+              // Barcode is a route, not a panel: it owns the camera and a
+              // full-screen viewfinder, and replaces itself with whatever the
+              // scan resolves to.
+              onPress={() =>
+                m.id === "barcode" ? router.push("/scan-barcode") : setMethod(m.id)
+              }
             />
           ))}
         </View>
@@ -145,9 +161,15 @@ export function AddFoodScreen({ meal }: Props) {
             {error}
           </ThemedText>
         ) : list.length === 0 ? (
-          <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
-            {showingSearch ? `No foods matching "${trimmed}"` : "Nothing here yet"}
-          </ThemedText>
+          <View>
+            <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
+              {showingSearch ? `No foods matching "${trimmed}"` : "Nothing here yet"}
+            </ThemedText>
+            {/* The empty state is the moment someone wants this most —
+                NZ/AU barcode and product coverage is thin, so "not found"
+                is a routine outcome rather than an edge case. */}
+            <CreateFoodRow query={showingSearch ? trimmed : ""} />
+          </View>
         ) : (
           // `collapsable={false}` keeps this wrapper as a real native view. Without
           // it, Fabric flattens the styleless container and hoists the rows into the
@@ -161,6 +183,7 @@ export function AddFoodScreen({ meal }: Props) {
               <FoodRow
                 key={item.foodId}
                 item={item}
+                trust={trustById.get(item.foodId) ?? null}
                 selected={!!selectedItems[item.foodId]}
                 onToggle={() => toggle(item)}
                 onOpen={() =>
@@ -171,6 +194,7 @@ export function AddFoodScreen({ meal }: Props) {
                 }
               />
             ))}
+            <CreateFoodRow query={showingSearch ? trimmed : ""} />
           </View>
         )}
       </ScrollView>
@@ -300,16 +324,20 @@ function FilterTab({ label, active, onPress }: { label: string; active: boolean;
 
 function FoodRow({
   item,
+  trust,
   selected,
   onToggle,
   onOpen,
 }: {
   item: DiaryFood;
+  trust?: TrustState;
   selected: boolean;
   onToggle: () => void;
   onOpen: () => void;
 }) {
   const { colors } = useTheme();
+  // Search rows carry live review state; recents fall back to the snapshot.
+  const showVerified = trust ? trust === "verified" : item.verified;
   return (
     <View style={[styles.foodRow, { borderBottomColor: colors.border }]}>
       <Pressable
@@ -321,9 +349,11 @@ function FoodRow({
           <ThemedText type="smBold" style={styles.foodName} numberOfLines={1}>
             {item.name}
           </ThemedText>
-          {item.verified && (
+          {showVerified ? (
             <FontAwesomeFreeSolid name="circle-check" size={14} color={colors.primary} />
-          )}
+          ) : trust === "unverified" ? (
+            <Badge label="Unverified" size="sm" variant="outline" />
+          ) : null}
         </View>
         <View style={styles.foodMetaRow}>
           <View style={[styles.dot, { backgroundColor: macroColor(colors, item.accent) }]} />
@@ -358,12 +388,58 @@ function FoodRow({
   );
 }
 
+/**
+ * How much the catalog vouches for a row. `null` means "say nothing" — the
+ * caller's own foods and system rows, where a chip would be noise.
+ */
+type TrustState = "verified" | "unverified" | null;
+
+function trustOf(item: FoodListItemDto): TrustState {
+  if (item.reviewStatus === "approved") return "verified";
+  // Search only ever returns own, system, or public rows, and system rows are
+  // always approved — so anything left that isn't the caller's is a public
+  // food nobody has reviewed yet.
+  return item.isOwned ? null : "unverified";
+}
+
+/**
+ * "Can't find it?" — the way into creating a food, shown under both the
+ * results list and the no-results state. Carries the current query through so
+ * the create form opens with the name already filled in.
+ */
+function CreateFoodRow({ query }: { query: string }) {
+  const router = useRouter();
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() =>
+        router.push({
+          pathname: "/create-food",
+          params: query ? { name: query } : {},
+        })
+      }
+      style={({ pressed }) => [
+        styles.createRow,
+        { borderTopColor: colors.border },
+        pressed && styles.pressed,
+      ]}>
+      <FontAwesomeFreeSolid name="plus" size={14} color={colors.textSecondary} />
+      <ThemedText type="smBold" themeColor="inkStrong">
+        {query ? `Can't find "${query}"? Create it` : "Create a food"}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 function MethodPlaceholder({ method }: { method: InputMethodId }) {
   const { colors } = useTheme();
   const copy: Record<Exclude<InputMethodId, "search">, { icon: FoodSearchIconName; text: string }> = {
     photo: { icon: "camera", text: "Snap a photo of your meal — coming soon." },
     voice: { icon: "microphone", text: "Log by voice — coming soon." },
-    barcode: { icon: "barcode", text: "Scan a barcode — coming soon." },
+    // barcode is handled as its own route (see the MethodButton onPress), so
+    // it never reaches this placeholder.
+    barcode: { icon: "barcode", text: "Opening the scanner…" },
   };
   const { icon, text } = copy[method as Exclude<InputMethodId, "search">];
   return (
@@ -524,6 +600,14 @@ const styles = StyleSheet.create({
   emptyState: {
     textAlign: "center",
     paddingVertical: Spacing.s32,
+  },
+  createRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.s8,
+    paddingVertical: Spacing.s16,
+    paddingHorizontal: Spacing.s24,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   centerState: {
     alignItems: "center",

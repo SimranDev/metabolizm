@@ -28,6 +28,7 @@ export default function SignInScreen() {
     haptics.success();
     // A session exists now, so this is the first call that can actually land.
     usersApi.pushDeviceTimezone();
+    usersApi.pushDeviceRegion();
     try {
       const { profile } = await usersApi.getMyProfile();
       if (profile) {

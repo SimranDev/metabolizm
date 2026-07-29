@@ -13,6 +13,8 @@ import { useProfile } from '@/store/profile';
 import { useWeight } from '@/store/weight';
 import { Spacing, THEME_PREFERENCE_OPTIONS, useThemePreference } from '@/theme';
 
+import { DEFAULT_REGION, REGION_LABELS } from '@metabolizm/shared';
+
 /**
  * Profile & settings.
  *
@@ -99,6 +101,12 @@ export default function ProfileScreen() {
               label="Units"
               value={`${unit} · ${profile.heightUnit === 'cm' ? 'cm' : 'ft/in'}`}
               onPress={() => router.push('/profile/units')}
+            />
+
+            <SettingsRow
+              label="Food database region"
+              value={REGION_LABELS[profile.region ?? DEFAULT_REGION]}
+              onPress={() => router.push('/profile/region')}
             />
             <SettingsRow
               label="Appearance"

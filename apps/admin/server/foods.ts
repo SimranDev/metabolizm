@@ -2,8 +2,12 @@
  * System-catalog CRUD, writing directly with Drizzle. Deliberately NOT the
  * api's /v1/catalog routes: those are user-scoped and force source:"custom".
  * Every row here is ownerId:null, source:"system", visibility:"public",
- * isVerified:true — and only such rows are listed/edited (user foods are
- * invisible to this tool).
+ * reviewStatus:"approved" — and only such rows are listed/edited, via the
+ * systemFood() filter below.
+ *
+ * `systemFood()` must NOT be loosened. review.ts is the one place in this tool
+ * that touches USER rows, and it does so through its own separate userFood()
+ * filter precisely so these routes cannot start editing user foods by accident.
  */
 import { foodPortions, foods } from "@metabolizm/db";
 import type { FoodDto, FoodPortionDto } from "@metabolizm/shared";
@@ -90,7 +94,10 @@ function toFoodDto(row: FoodRow, portions: PortionRow[]): FoodDto {
     fatG: row.fatG,
     nutrients: row.nutrients,
     visibility: row.visibility,
-    isVerified: row.isVerified,
+    reviewStatus: row.reviewStatus,
+    reviewFlags: row.reviewFlags,
+    // Derived from reviewStatus — never a stored column. See review.ts.
+    isVerified: row.reviewStatus === "approved",
     popularity: row.popularity,
     forkedFrom: row.forkedFrom,
     version: row.version,
@@ -158,7 +165,11 @@ export function registerFoodRoutes(app: FastifyInstance, db: Database): void {
             fatG: input.fatG,
             nutrients: input.nutrients,
             visibility: "public",
-            isVerified: true,
+            // System rows are curated here and are approved by definition;
+            // they never enter the review queue (which is scoped to
+            // owner_id IS NOT NULL). Version starts at 1.
+            reviewStatus: "approved",
+            reviewedVersion: 1,
           })
           .returning();
         const portions =
@@ -206,7 +217,7 @@ export function registerFoodRoutes(app: FastifyInstance, db: Database): void {
         proteinG: foods.proteinG,
         carbsG: foods.carbsG,
         fatG: foods.fatG,
-        isVerified: foods.isVerified,
+        reviewStatus: foods.reviewStatus,
         updatedAt: foods.updatedAt,
       })
       .from(foods)
@@ -217,6 +228,7 @@ export function registerFoodRoutes(app: FastifyInstance, db: Database): void {
     return reply.send({
       items: items.map((row) => ({
         ...row,
+        isVerified: row.reviewStatus === "approved",
         updatedAt: row.updatedAt.toISOString(),
       })),
     });

@@ -6,10 +6,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { useFoodDetail } from "@/hooks/use-food-detail";
+import { ApiError, reportFood } from "@/lib/api";
+import { useCurrentUserId } from "@/lib/auth";
 import { buildUnits, displayName, dominantMacro, scaleFood } from "@/lib/food";
 import type { DiaryFood, FoodUnit } from "@metabolizm/shared";
 import { toMealId, useDiary } from "@/store/diary";
@@ -52,6 +55,7 @@ export function FoodDetailScreen({ foodId, meal, mode, entryId }: Props) {
   const { colors } = useTheme();
 
   const { detail, loading, error, reload } = useFoodDetail(foodId);
+  const currentUserId = useCurrentUserId();
   const upsert = useFoodSelection((s) => s.upsert);
   const updateEntry = useDiary((s) => s.updateEntry);
   const existingEntry = useDiary((s) =>
@@ -150,6 +154,24 @@ export function FoodDetailScreen({ foodId, meal, mode, entryId }: Props) {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
+            {/* Trust state is always rendered as SOMETHING — verified badge or
+                a designed unverified chip — never as an absent badge the user
+                has to interpret. Same rule as the groups locked chip. */}
+            <View style={styles.trustRow}>
+              {detail.isVerified ? (
+                <Badge
+                  label="Verified"
+                  size="sm"
+                  variant="neutral"
+                  icon={(color) => (
+                    <FontAwesomeFreeSolid name="circle-check" size={12} color={color} />
+                  )}
+                />
+              ) : detail.ownerId !== null ? (
+                <Badge label="Unverified · added by a member" size="sm" variant="outline" />
+              ) : null}
+            </View>
+
             <NutritionFacts
               calories={scaled.calories}
               proteinG={scaled.proteinG}
@@ -157,6 +179,11 @@ export function FoodDetailScreen({ foodId, meal, mode, entryId }: Props) {
               fatG={scaled.fatG}
               nutrients={scaled.nutrients}
               servingLabel={servingText(qty, unit)}
+            />
+
+            <ReportFoodRow
+              foodId={detail.id}
+              ownedByCaller={detail.ownerId !== null && detail.ownerId === currentUserId}
             />
           </ScrollView>
 
@@ -184,6 +211,85 @@ export function FoodDetailScreen({ foodId, meal, mode, entryId }: Props) {
         </>
       )}
     </ThemedView>
+  );
+}
+
+/**
+ * "Report this food." Inline rather than a sheet — it is a two-field
+ * interaction and pulling in a bottom-sheet library for it would cost more
+ * bundle than the whole feature. Hidden for the caller's own foods, which the
+ * server rejects anyway (they can edit or delete instead).
+ */
+function ReportFoodRow({
+  foodId,
+  ownedByCaller,
+}: {
+  foodId: string;
+  ownedByCaller: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (ownedByCaller) return null;
+
+  if (state === "sent") {
+    return (
+      <View style={styles.reportBlock}>
+        <ThemedText type="sm" themeColor="textSecondary">
+          Thanks — we&apos;ll take another look at this food.
+        </ThemedText>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.reportBlock}>
+      {open ? (
+        <>
+          <Input
+            label="WHAT LOOKS WRONG?"
+            value={reason}
+            onChangeText={setReason}
+            placeholder="The energy looks like kilojoules"
+            multiline
+          />
+          {message ? (
+            <ThemedText type="sm" themeColor="danger">
+              {message}
+            </ThemedText>
+          ) : null}
+          <Button
+            label={state === "sending" ? "Sending…" : "Send report"}
+            size="sm"
+            variant="secondary"
+            disabled={reason.trim().length === 0 || state === "sending"}
+            onPress={() => {
+              setState("sending");
+              setMessage(null);
+              reportFood(foodId, reason.trim())
+                .then(() => setState("sent"))
+                .catch((e: unknown) => {
+                  setState("error");
+                  setMessage(
+                    e instanceof ApiError && e.status === 409
+                      ? "You've already reported this food."
+                      : "Couldn't send that report.",
+                  );
+                });
+            }}
+          />
+        </>
+      ) : (
+        <Button
+          label="Report this food"
+          size="sm"
+          variant="ghost"
+          onPress={() => setOpen(true)}
+        />
+      )}
+    </View>
   );
 }
 
@@ -228,5 +334,13 @@ const styles = StyleSheet.create({
   },
   unitCol: {
     flex: 1.3,
+  },
+  trustRow: {
+    flexDirection: "row",
+    paddingBottom: Spacing.s12,
+  },
+  reportBlock: {
+    marginTop: Spacing.s24,
+    gap: Spacing.s8,
   },
 });

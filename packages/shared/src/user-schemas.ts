@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 
+import { regionSchema } from "./regions";
+
 import { entryDateSchema } from "./diary-schemas";
 import { weightUnitSchema } from "./weight-schemas";
 
@@ -35,6 +37,7 @@ export const updateMeSchema = z
   .object({
     timezone: timezoneSchema.optional(),
     weightUnit: weightUnitSchema.optional(),
+    region: regionSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "Patch must change at least one field",

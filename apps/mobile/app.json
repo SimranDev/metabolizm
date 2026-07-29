@@ -68,7 +68,7 @@
           "widgets": [
             {
               "name": "CaloriePace",
-              "displayName": "Calories · Day pace",
+              "displayName": "Calories \u00b7 Day pace",
               "description": "Calories remaining and your pace through the day.",
               "supportedFamilies": [
                 "systemSmall",
@@ -104,7 +104,7 @@
           "widgets": [
             {
               "name": "CaloriePace",
-              "label": "Calories · Day pace",
+              "label": "Calories \u00b7 Day pace",
               "description": "Calories remaining and your pace through the day.",
               "minWidth": "110dp",
               "minHeight": "110dp",
@@ -142,10 +142,22 @@
         "expo-build-properties",
         {
           "android": {
-            "buildArchs": ["arm64-v8a", "armeabi-v7a"],
+            "buildArchs": [
+              "arm64-v8a",
+              "armeabi-v7a"
+            ],
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Metabolizm uses the camera to scan barcodes on food packaging.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
         }
       ]
     ],

@@ -7,6 +7,7 @@ import { createDb } from "./db";
 import { loadEnv } from "./env";
 import { registerFoodRoutes } from "./foods";
 import { registerParseRoute } from "./parse";
+import { registerReviewRoutes } from "./review";
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -16,6 +17,8 @@ async function main(): Promise<void> {
   app.get("/api/health", () => ({ ok: true }));
   registerFoodRoutes(app, db);
   registerParseRoute(app);
+  // The only routes here that touch user-owned foods — see review.ts.
+  registerReviewRoutes(app, db, env);
   app.addHook("onClose", async () => {
     await db.$client.end();
   });

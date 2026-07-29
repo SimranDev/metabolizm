@@ -11,6 +11,13 @@ enum base_unit {
   ml
 }
 
+enum food_review_status {
+  pending
+  approved
+  rejected
+  needs_edit
+}
+
 enum food_source {
   system
   custom
@@ -163,6 +170,36 @@ table food_portions {
   }
 }
 
+table food_reports {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  food_id uuid [not null]
+  reporter_id uuid
+  reason text [not null]
+  resolved_at "timestamp with time zone"
+  resolved_by uuid
+  created_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    (food_id, reporter_id) [name: 'food_reports_open_uq', unique]
+    food_id [name: 'food_reports_food_idx']
+  }
+}
+
+table food_reviews {
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  food_id uuid [not null]
+  food_version bigint [not null]
+  reviewer_id uuid
+  from_status food_review_status [not null]
+  to_status food_review_status [not null]
+  note text
+  created_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    (food_id, created_at) [name: 'food_reviews_food_created_idx']
+  }
+}
+
 table foods {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   owner_id uuid
@@ -170,6 +207,7 @@ table foods {
   brand text
   description text
   barcode text
+  markets text[] [not null, default: `[]`]
   source_ref text
   source food_source [not null, default: 'custom']
   base_unit base_unit [not null, default: 'g']
@@ -181,7 +219,11 @@ table foods {
   fat_g "numeric(8, 2)" [not null]
   nutrients jsonb [not null, default: `{}`]
   visibility visibility [not null, default: 'private']
-  is_verified boolean [not null, default: false]
+  review_status food_review_status [not null, default: 'pending']
+  review_flags jsonb [not null, default: `[]`]
+  reviewed_by uuid
+  reviewed_at "timestamp with time zone"
+  reviewed_version bigint
   popularity integer [not null, default: 0]
   forked_from uuid
   version bigint [not null, default: 1]
@@ -192,8 +234,10 @@ table foods {
   indexes {
     owner_id [name: 'foods_owner_id_idx']
     name [name: 'foods_name_trgm_idx']
-    barcode [name: 'foods_barcode_active_uq', unique]
+    barcode [name: 'foods_barcode_public_uq', unique]
+    markets [name: 'foods_markets_gin_idx']
     source_ref [name: 'foods_source_ref_active_uq', unique]
+    created_at [name: 'foods_review_queue_idx']
   }
 }
 
@@ -338,6 +382,7 @@ table users {
   email_verified boolean [not null, default: false]
   image text
   timezone text [not null, default: 'UTC']
+  region text [not null, default: 'NZ']
   weight_unit weight_unit [not null, default: 'kg']
   created_at "timestamp with time zone" [not null, default: `now()`]
   updated_at "timestamp with time zone" [not null, default: `now()`]
@@ -386,7 +431,19 @@ ref diary_entries_food_id_foods_id_fk: diary_entries.food_id > foods.id [delete:
 
 ref food_portions_food_id_foods_id_fk: food_portions.food_id > foods.id [delete: cascade, update: no action]
 
+ref food_reports_food_id_foods_id_fk: food_reports.food_id > foods.id [delete: cascade, update: no action]
+
+ref food_reports_reporter_id_users_id_fk: food_reports.reporter_id > users.id [delete: set null, update: no action]
+
+ref food_reports_resolved_by_users_id_fk: food_reports.resolved_by > users.id [delete: set null, update: no action]
+
+ref food_reviews_food_id_foods_id_fk: food_reviews.food_id > foods.id [delete: cascade, update: no action]
+
+ref food_reviews_reviewer_id_users_id_fk: food_reviews.reviewer_id > users.id [delete: set null, update: no action]
+
 ref foods_owner_id_users_id_fk: foods.owner_id > users.id [delete: cascade, update: no action]
+
+ref foods_reviewed_by_users_id_fk: foods.reviewed_by > users.id [delete: set null, update: no action]
 
 ref foods_forked_from_foods_id_fk: foods.forked_from > foods.id [delete: set null, update: no action]
 

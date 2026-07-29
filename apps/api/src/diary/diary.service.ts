@@ -1,4 +1,4 @@
-import { diaryEntries } from "@metabolizm/db";
+import { diaryEntries, foods } from "@metabolizm/db";
 import type { DiaryEntryDto, DiaryEntryUpsert } from "@metabolizm/shared";
 import {
   BadRequestException,
@@ -84,6 +84,31 @@ export class DiaryService {
         // Pre-write dates too: an upsert can move an entry across days, and
         // the day it left must be recomputed as well.
         const affectedDates = new Set<string>(owners.map((r) => r.entryDate));
+
+        // `verified` is derived here rather than trusted from the payload: it
+        // is a claim the CATALOG makes about a food, so a client must not be
+        // able to assert it about a food it invented seconds ago. One batched
+        // lookup for the whole upsert.
+        const foodIds = [
+          ...new Set(
+            entries.map((e) => e.foodId).filter((id): id is string => !!id),
+          ),
+        ];
+        const approved = new Set(
+          foodIds.length === 0
+            ? []
+            : (
+                await tx
+                  .select({ id: foods.id })
+                  .from(foods)
+                  .where(
+                    and(
+                      inArray(foods.id, foodIds),
+                      eq(foods.reviewStatus, "approved"),
+                    ),
+                  )
+              ).map((r) => r.id),
+        );
         const written: DiaryRow[] = [];
         for (const entry of entries) {
           // updated_at is always set here (JS Date, ms precision) instead of
@@ -104,7 +129,11 @@ export class DiaryService {
             carbsG: entry.carbsG,
             fatG: entry.fatG,
             nutrients: entry.nutrients,
-            verified: entry.verified,
+            // A log-time SNAPSHOT, like every nutrition value on this row, and
+            // it goes stale by design: a food approved (or rejected) tomorrow
+            // does not rewrite what this entry said when it was logged. Same
+            // rule as the macros — logged history is never read live.
+            verified: entry.foodId ? approved.has(entry.foodId) : false,
             loggedAt: new Date(entry.loggedAt),
           };
           const [row] = await tx

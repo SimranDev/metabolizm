@@ -1,7 +1,11 @@
 /**
  * Thin fetch client for the admin Fastify server (proxied under /api).
  */
-import type { FoodDto } from "@metabolizm/shared";
+import type {
+  FoodDto,
+  FoodFlag,
+  FoodReviewStatus,
+} from "@metabolizm/shared";
 
 export type FoodListRow = {
   id: string;
@@ -15,6 +19,55 @@ export type FoodListRow = {
   fatG: number;
   isVerified: boolean;
   updatedAt: string;
+};
+
+/** A row in the review queue (user foods only — see server/review.ts). */
+export type ReviewQueueRow = {
+  id: string;
+  name: string;
+  brand: string | null;
+  barcode: string | null;
+  baseUnit: "g" | "ml";
+  energyKcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  reviewStatus: FoodReviewStatus;
+  reviewFlags: FoodFlag[];
+  createdAt: string;
+  ownerEmail: string | null;
+  openReports: number;
+  /** 4·P + 4·C + 9·F — the energy the macros themselves imply. */
+  computedKcal: number;
+  /** entered − computed. The number that resolves most of the queue. */
+  kcalDelta: number;
+  maxSeverity: "high" | "medium" | "low" | null;
+};
+
+export type ReviewReport = {
+  id: string;
+  reason: string;
+  reporterEmail: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+};
+
+export type ReviewHistoryRow = {
+  id: string;
+  foodVersion: number;
+  fromStatus: FoodReviewStatus;
+  toStatus: FoodReviewStatus;
+  note: string | null;
+  reviewerEmail: string | null;
+  createdAt: string;
+};
+
+export type ReviewDetail = {
+  food: FoodDto;
+  ownerEmail: string | null;
+  computedKcal: number;
+  reports: ReviewReport[];
+  history: ReviewHistoryRow[];
 };
 
 export type ParsedFood = {
@@ -92,4 +145,32 @@ export const api = {
     }),
   deleteFood: (id: string) =>
     request<void>(`/api/foods/${id}`, { method: "DELETE" }),
+
+  // Review queue — user foods. Separate route prefix from the system-catalog
+  // calls above, mirroring the server-side split.
+  reviewQueue: (params: {
+    status: FoodReviewStatus;
+    flag?: string;
+    severity?: string;
+  }) => {
+    const q = new URLSearchParams({ status: params.status });
+    if (params.flag) q.set("flag", params.flag);
+    if (params.severity) q.set("severity", params.severity);
+    return request<{ items: ReviewQueueRow[] }>(`/api/review/queue?${q}`);
+  },
+  reviewFood: (id: string) => request<ReviewDetail>(`/api/review/foods/${id}`),
+  correctReviewFood: (id: string, payload: unknown) =>
+    request<FoodDto>(`/api/review/foods/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  reviewDecision: (id: string, status: FoodReviewStatus, note?: string) =>
+    request<FoodDto>(`/api/review/foods/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ status, note }),
+    }),
+  resolveReport: (id: string) =>
+    request<{ id: string }>(`/api/review/reports/${id}/resolve`, {
+      method: "POST",
+    }),
 };

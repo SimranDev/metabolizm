@@ -3,6 +3,7 @@
  * All macro/nutrient values are PER 100 base units (g or ml) — never per
  * serving; portion math happens at display time.
  */
+import type { FoodFlag, FoodReviewStatus } from "./food-review";
 import type { NutrientMap } from "./nutrients";
 
 export type FoodSource = "system" | "custom";
@@ -42,6 +43,17 @@ export type FoodDto = {
   fatG: number;
   nutrients: NutrientMap;
   visibility: FoodVisibility;
+  /** Moderation state. Server-controlled; never accepted from a client. */
+  reviewStatus: FoodReviewStatus;
+  /**
+   * Triage heuristics stamped at write time (see food-review.ts). On the full
+   * record only — list rows stay lean, same reasoning as `nutrients`.
+   */
+  reviewFlags: FoodFlag[];
+  /**
+   * Derived from `reviewStatus === "approved"`, NOT a stored column. Kept so
+   * the mobile contract does not churn; it is the one fact, expressed twice.
+   */
   isVerified: boolean;
   popularity: number;
   forkedFrom: string | null;
@@ -65,6 +77,9 @@ export type FoodListItemDto = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /** Moderation state. `reviewFlags` is deliberately not carried on list rows. */
+  reviewStatus: FoodReviewStatus;
+  /** Derived from `reviewStatus === "approved"`; see FoodDto. */
   isVerified: boolean;
   /** True when the row belongs to the caller. */
   isOwned: boolean;
@@ -108,8 +123,11 @@ export type CreateFoodRequest = {
 
 /**
  * PATCH body — all fields optional; text fields accept null to clear.
- * Portions are create-only for now. source/isVerified/popularity are
- * server-controlled and never accepted from clients.
+ * Portions are create-only for now. source, popularity, and the whole review
+ * surface (reviewStatus, reviewFlags, reviewedBy/At/Version — plus isVerified,
+ * which is derived from reviewStatus) are server-controlled and never accepted
+ * from clients. Letting a client set reviewStatus would make the review queue
+ * decorative.
  */
 export type UpdateFoodRequest = {
   name?: string;

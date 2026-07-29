@@ -5,6 +5,9 @@
  * its ONLY writer, yet every server-side "today" pivots on it — entry dates,
  * logging streaks, and each member's day in a group read. A device that never
  * pushes its zone has all of those silently shifted by its real offset.
+ *
+ * `region` behaves identically — server default, single writer, and a device
+ * that never pushes it gets catalog search ranked for the wrong market.
  */
 
 import type {
@@ -13,8 +16,10 @@ import type {
   MyTargetsResponse,
   PutMyProfileInput,
   PutMyTargetsInput,
+  Region,
   WeightUnit,
 } from "@metabolizm/shared";
+import { DEFAULT_REGION, isSupportedRegion } from "@metabolizm/shared";
 
 import { apiRequest } from "./client";
 
@@ -25,7 +30,7 @@ export function getMe(opts?: Signal): Promise<MeResponse> {
 }
 
 export function updateMe(
-  patch: { timezone?: string; weightUnit?: WeightUnit },
+  patch: { timezone?: string; weightUnit?: WeightUnit; region?: Region },
   opts?: Signal,
 ): Promise<MeResponse> {
   return apiRequest("/users/me", { method: "PATCH", body: patch, ...opts });
@@ -93,4 +98,27 @@ export function deviceTimezone(): string {
  */
 export function pushDeviceTimezone(): void {
   void updateMe({ timezone: deviceTimezone() }).catch(() => {});
+}
+
+/**
+ * The device's food-database region, from its locale. Falls back to the
+ * default only when the locale names a region we don't support.
+ */
+export function deviceRegion(): Region {
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+  // "en-NZ" → "NZ". Intl gives a BCP-47 tag; the region subtag is the
+  // two-letter uppercase part when present.
+  const region = /-([A-Z]{2})\b/.exec(locale)?.[1];
+  return region && isSupportedRegion(region) ? region : DEFAULT_REGION;
+}
+
+/**
+ * Push the device's region, fire-and-forget — same call sites and the same
+ * reasoning as `pushDeviceTimezone`. `users.region` defaults to 'NZ' server
+ * side, and a silent default is a silent wrong answer: an account that never
+ * sets it gets search results ranked for a market it isn't in, with nothing
+ * on screen to suggest anything is wrong.
+ */
+export function pushDeviceRegion(): void {
+  void updateMe({ region: deviceRegion() }).catch(() => {});
 }

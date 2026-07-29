@@ -41,6 +41,13 @@ export type UsdaMapResult =
       sourceRef: string;
       input: CreateFoodInput;
       popularity: number;
+      /**
+       * The source had no fibre value, so `input.carbsG` is still TOTAL
+       * carbohydrate rather than available. Callers persist this as the
+       * `carbs_include_fibre` review flag — see the carbohydrate invariant in
+       * CLAUDE.md.
+       */
+      carbsIncludeFibre: boolean;
       warnings: string[];
       unknownNutrients: UnknownNutrient[];
     }
@@ -91,7 +98,10 @@ const KJ_ENERGY_ID = 1062;
 const PROTEIN_ID = 1003;
 const FAT_ID = 1004;
 // 1050 = carbohydrate by summation, fallback when 1005 (by difference) is absent.
+// BOTH include dietary fibre, which is why FIBER_ID is subtracted below —
+// `carbsG` is always AVAILABLE carbohydrate in this codebase.
 const CARB_IDS = [1005, 1050];
+const FIBER_ID = 1079;
 const MACRO_AND_ENERGY_IDS = new Set([
   ...ENERGY_IDS,
   KJ_ENERGY_ID,
@@ -272,7 +282,33 @@ export function mapUsdaFood(raw: unknown): UsdaMapResult {
   };
   const proteinG = clampMacro(macroGrams([PROTEIN_ID]), "protein");
   const fatG = clampMacro(macroGrams([FAT_ID]), "fat");
-  const carbsG = clampMacro(macroGrams(CARB_IDS), "carbs");
+  const totalCarbsG = clampMacro(macroGrams(CARB_IDS), "carbs");
+
+  // THE CARBOHYDRATE INVARIANT. US labels and USDA report TOTAL carbohydrate
+  // with fibre included; AU/NZ nutrition information panels report AVAILABLE
+  // carbohydrate with fibre excluded and listed separately. `carbsG` is always
+  // the AU/NZ meaning here, because that is what a user reads off a packet —
+  // so USDA is converted once, at this import boundary, never at read time.
+  //
+  // Where fibre is absent the conversion is impossible. We do NOT guess: the
+  // total is kept and the row is stamped `carbs_include_fibre` so it stays
+  // findable rather than silently wrong.
+  const fiberG = macroGrams([FIBER_ID]);
+  let carbsG = totalCarbsG;
+  let carbsIncludeFibre = false;
+  if (totalCarbsG !== null) {
+    if (fiberG !== null) {
+      // Fibre occasionally exceeds "by difference" carbs on very high-fibre
+      // foods (bran, psyllium) where the two were measured independently.
+      carbsG = Math.max(0, totalCarbsG - fiberG);
+    } else {
+      carbsIncludeFibre = true;
+      warnings.push(
+        "no fibre value (1079): carbs kept as TOTAL, not available carbohydrate",
+      );
+    }
+  }
+
   if (proteinG === null || fatG === null || carbsG === null) {
     const missing = [
       proteinG === null ? "protein (1003)" : null,
@@ -394,6 +430,7 @@ export function mapUsdaFood(raw: unknown): UsdaMapResult {
     sourceRef: `fdc:${food.fdcId}`,
     input: validated.data,
     popularity: computePopularity(validated.data.name),
+    carbsIncludeFibre,
     warnings,
     unknownNutrients,
   };

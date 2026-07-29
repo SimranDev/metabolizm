@@ -15,8 +15,16 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 
 import { foodPortions, foods } from "@metabolizm/db";
+import { FOOD_FLAG_SEVERITY, type FoodFlag } from "@metabolizm/shared";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
+
+/** Stamped on rows whose carbs could not be converted to available carbohydrate. */
+const CARBS_INCLUDE_FIBRE_FLAG: FoodFlag = {
+  code: "carbs_include_fibre",
+  severity: FOOD_FLAG_SEVERITY.carbs_include_fibre,
+  detail: "Source had no fibre value (1079); carbs are TOTAL, not available.",
+};
 
 import { createDb, type Database } from "../server/db";
 import { loadEnv } from "../server/env";
@@ -158,7 +166,16 @@ async function importFile(db: Database, path: string): Promise<void> {
             fatG: m.input.fatG,
             nutrients: m.input.nutrients,
             visibility: "public" as const,
-            isVerified: true,
+            // Must be set explicitly: the column defaults to 'pending', so
+            // omitting it would file the whole USDA import into the review
+            // queue. System rows are approved by definition.
+            reviewStatus: "approved" as const,
+            reviewedVersion: 1,
+            // USDA is a US source.
+            markets: ["US"],
+            // Provenance, not judgement: carbs on this row could not be
+            // converted to available carbohydrate for want of a fibre value.
+            reviewFlags: m.carbsIncludeFibre ? [CARBS_INCLUDE_FIBRE_FLAG] : [],
             popularity: m.popularity,
           };
         });
@@ -192,7 +209,11 @@ async function importFile(db: Database, path: string): Promise<void> {
               nutrients: m.input.nutrients,
               source: "system",
               visibility: "public",
-              isVerified: true,
+              // System catalog rows are approved by definition and never enter
+              // the review queue (which is scoped to owner_id IS NOT NULL).
+              reviewStatus: "approved",
+              markets: ["US"],
+              reviewFlags: m.carbsIncludeFibre ? [CARBS_INCLUDE_FIBRE_FLAG] : [],
               sourceRef: m.sourceRef,
               version: sql`${foods.version} + 1`,
               updatedAt: new Date(),

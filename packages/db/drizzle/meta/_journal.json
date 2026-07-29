@@ -57,6 +57,34 @@
       "when": 1784680717059,
       "tag": "0007_user_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785299697733,
+      "tag": "0008_groovy_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785299721457,
+      "tag": "0009_majestic_luminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785301581938,
+      "tag": "0010_previous_silver_fox",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785301581939,
+      "tag": "0011_available_carbohydrate",
+      "breakpoints": true
     }
   ]
 }

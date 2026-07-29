@@ -7,6 +7,7 @@ import type {
   UserProfileDto,
   UserTargetDto,
 } from "@metabolizm/shared";
+import { DEFAULT_REGION, isSupportedRegion } from "@metabolizm/shared";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, eq, gte } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
@@ -57,6 +58,7 @@ function toMeDto(row: UserRow): MeDto {
     image: row.image,
     timezone: row.timezone,
     weightUnit: row.weightUnit,
+    region: isSupportedRegion(row.region) ? row.region : DEFAULT_REGION,
   };
 }
 
@@ -65,6 +67,11 @@ function toMeDto(row: UserRow): MeDto {
  * every server-side "today" pivots on — entry dates, logging streaks, and each
  * member's day in a group read. It defaults to UTC, so a client that never
  * calls this has all of those silently shifted by its real offset.
+ *
+ * Also the only writer of users.region, which ranks catalog search, and which
+ * has exactly the same failure mode: the 'NZ' default is a fallback rather
+ * than an answer, so onboarding sets it explicitly from the device locale
+ * instead of letting a silent default become a silent wrong answer.
  */
 @Injectable()
 export class UsersService {
@@ -91,9 +98,11 @@ export class UsersService {
    * preference from being reset to a default it never asked for.
    */
   async update(userId: string, input: UpdateMeInput): Promise<MeDto> {
-    const patch: Partial<Pick<UserRow, "timezone" | "weightUnit">> = {};
+    const patch: Partial<Pick<UserRow, "timezone" | "weightUnit" | "region">> =
+      {};
     if (input.timezone !== undefined) patch.timezone = input.timezone;
     if (input.weightUnit !== undefined) patch.weightUnit = input.weightUnit;
+    if (input.region !== undefined) patch.region = input.region;
 
     const [row] = await this.db
       .update(users)

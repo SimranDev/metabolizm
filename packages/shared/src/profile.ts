@@ -3,6 +3,7 @@
  * store that persists it lives in the mobile app (src/store/profile.ts).
  */
 
+import type { Region } from "./regions";
 import type {
   ActivityLevel,
   Goal,
@@ -29,4 +30,11 @@ export type Profile = {
   planId: PlanId;
   targetCalories: number;
   macros: Macros;
+  /**
+   * Food-database region. Mirrored on the device so the create-food energy
+   * toggle can default to kJ for AU/NZ without a network round trip; the
+   * server's users.region remains the source of truth and its only writer is
+   * the users module.
+   */
+  region?: Region;
 };

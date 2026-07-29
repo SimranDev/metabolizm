@@ -60,6 +60,7 @@ export async function finalizeOnboarding(
   };
 
   usersApi.pushDeviceTimezone();
+  usersApi.pushDeviceRegion();
   void usersApi
     .putMyTargets({
       effectiveFrom: todayKey(),

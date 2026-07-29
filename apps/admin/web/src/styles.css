@@ -285,6 +285,63 @@ tbody tr.selected {
   padding-top: 8px;
 }
 
+/* Review queue */
+.flag {
+  display: inline-block;
+  margin: 0 4px 2px 0;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.flag-high {
+  color: var(--danger);
+}
+
+.flag-medium {
+  color: var(--warn);
+}
+
+.flag-low {
+  color: var(--muted);
+}
+
+/* A barcode is a global key: one bad record reaches everyone who scans that
+   product. These rows sort to the top of the queue, so mark them clearly. */
+.barcode-dot {
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+table.queue td.num,
+table.queue th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Entered vs computed disagreeing is the signal, so make it visible. */
+td.mismatch {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.kcal-compare {
+  gap: 24px;
+  align-items: baseline;
+  margin: 8px 0;
+}
+
+.kcal-compare div {
+  display: flex;
+  flex-direction: column;
+}
+
+.error {
+  color: var(--danger);
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;

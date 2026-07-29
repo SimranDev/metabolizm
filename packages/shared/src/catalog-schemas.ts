@@ -2,6 +2,12 @@
  * Food input validation shared by apps/api (user catalog routes) and
  * apps/admin (system catalog writes). All macro/nutrient values are PER 100
  * base units (g or ml), never per serving.
+ *
+ * Neither schema below carries the review surface — reviewStatus, reviewFlags,
+ * reviewedBy/At/Version — and neither may ever gain it. Those are written only
+ * by the server (evaluateFoodFlags on create/update) and by an admin decision;
+ * a client that could set its own reviewStatus would make the queue
+ * decorative. Same rule as source/popularity.
  */
 import { z } from "zod";
 
