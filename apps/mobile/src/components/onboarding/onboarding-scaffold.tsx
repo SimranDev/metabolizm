@@ -161,13 +161,26 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   scroll: { flex: 1 },
+  // `flexGrow` (not `flex`) so the content is at least a full screen tall: that
+  // is what gives `body` leftover space to centre itself in.
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.s24,
     paddingBottom: Spacing.s24,
   },
   title: { marginTop: Spacing.s8 },
   subtitle: { marginTop: Spacing.s8 },
-  body: { marginTop: Spacing.s24, gap: Spacing.s16 },
+  // The answers sit centred in the gap between the question and the Continue
+  // button — `flexGrow: 1` takes the leftover space and `center` pins them in
+  // the middle of it. When the answers are taller than that gap there is no
+  // leftover space to take, so the rule stops applying by itself: the body
+  // keeps its natural height and the ScrollView scrolls as normal.
+  body: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    marginTop: Spacing.s24,
+    gap: Spacing.s16,
+  },
   footer: {
     paddingHorizontal: Spacing.s24,
     paddingTop: Spacing.s8,

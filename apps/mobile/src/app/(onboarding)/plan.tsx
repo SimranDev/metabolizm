@@ -92,9 +92,11 @@ export default function PlanScreen() {
     <OnboardingScaffold
       progress={stepProgress('plan')}
       title="Choose your pace"
-      subtitle={`Maintenance is about ${maintenance.toLocaleString()} cal/day. Pick how fast you want to go.`}
+      subtitle={`Maintenance is about ${maintenance.toLocaleString()} cal/day. The pace you pick sets your daily calories — the finish date follows from it.`}
       onNext={onContinue}
       nextLabel="This looks good">
+      <OutcomeCards plan={selectedPlan} />
+
       {presets.map((plan) => (
         <PlanCard
           key={plan.id}
@@ -172,11 +174,91 @@ export default function PlanScreen() {
         </ThemedText>
       ) : null}
 
+      <Derivation plan={selectedPlan} maintenance={maintenance} weightKg={metrics.weightKg} />
+
+      {selectedPlan.projectedDate ? (
+        <ThemedText type="sm" themeColor="textSecondary" style={styles.disclaimer}>
+          That date is an optimistic estimate — it assumes your metabolism holds steady and you hit
+          every target. Plan for it to take a few weeks longer, and treat progress as the win.
+        </ThemedText>
+      ) : null}
+
       <ThemedText type="sm" themeColor="textSecondary" style={styles.disclaimer}>
         Estimates only, not medical advice. Check with a healthcare professional before making big
         changes.
       </ThemedText>
     </OnboardingScaffold>
+  );
+}
+
+/**
+ * The two numbers the pace actually produces, kept together and updating live as
+ * the selection changes: the calories you eat, and the date that falls out of
+ * them. Deliberately in that order — the budget is the commitment, the date is a
+ * consequence.
+ */
+function OutcomeCards({ plan }: { plan: Plan }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.outcomes}>
+      <ThemedView type="surfaceSunken" style={[styles.outcome, { borderColor: colors.focusRing }]}>
+        <ThemedText type="statSm" tabular style={{ color: colors.primary }}>
+          {roundCals(plan.targetCalories)}
+        </ThemedText>
+        <ThemedText type="micro" themeColor="textSecondary">
+          daily calories
+        </ThemedText>
+      </ThemedView>
+      <ThemedView type="surfaceSunken" style={styles.outcome}>
+        <ThemedText type="statSm">{plan.projectedDate ? fmtDate(plan.projectedDate) : '—'}</ThemedText>
+        <ThemedText type="micro" themeColor="textSecondary">
+          {plan.projectedDate ? 'estimated finish' : 'no end date'}
+        </ThemedText>
+      </ThemedView>
+    </View>
+  );
+}
+
+/**
+ * Shows the working behind the target. Every number here already exists on the
+ * `Plan`; nothing is recomputed for display.
+ */
+function Derivation({
+  plan,
+  maintenance,
+  weightKg,
+}: {
+  plan: Plan;
+  maintenance: number;
+  weightKg: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const delta = Math.round(plan.targetCalories - maintenance);
+
+  const lines = [
+    `Maintenance — about ${maintenance.toLocaleString()} cal/day, from your height, weight, age, sex and activity.`,
+    plan.weeklyRateKg === 0
+      ? 'Pace — holding steady, so no adjustment is applied.'
+      : `Pace — ${Math.abs(plan.weeklyRateKg).toFixed(2)} kg/week works out to ${delta > 0 ? '+' : ''}${delta.toLocaleString()} cal/day.`,
+    `Daily target — ${roundCals(plan.targetCalories)} cal/day.`,
+    `Macros — protein ${plan.macros.proteinG} g (about ${(plan.macros.proteinG / weightKg).toFixed(1)} g per kg), fat ${plan.macros.fatG} g, and carbs fill the rest.`,
+  ];
+
+  return (
+    <View style={styles.derivation}>
+      <Pressable accessibilityRole="button" onPress={() => setOpen((v) => !v)}>
+        <ThemedText type="smBold" themeColor="textSecondary" style={styles.disclaimer}>
+          {open ? 'Hide the working' : 'How was this worked out?'}
+        </ThemedText>
+      </Pressable>
+      {open
+        ? lines.map((line) => (
+            <ThemedText key={line} type="sm" themeColor="textSecondary">
+              {line}
+            </ThemedText>
+          ))
+        : null}
+    </View>
   );
 }
 
@@ -238,6 +320,17 @@ const styles = StyleSheet.create({
   cardText: { flex: 1, gap: 2 },
   cardLabel: { fontSize: 15 },
   cals: { fontSize: 20, textAlign: 'right' },
+  outcomes: { flexDirection: 'row', gap: Spacing.s12 },
+  outcome: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    padding: Spacing.s16,
+    gap: 2,
+    alignItems: 'center',
+  },
+  derivation: { gap: Spacing.s8 },
   sliderWrap: { marginTop: Spacing.s16, gap: Spacing.s8 },
   slider: { height: 40 },
   sliderLabel: { textAlign: 'center' },
