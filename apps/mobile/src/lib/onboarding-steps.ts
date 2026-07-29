@@ -6,6 +6,7 @@ export const ONBOARDING_STEPS = [
   'height',
   'weight',
   'goal-weight',
+  'exercise',
   'activity',
   'plan',
 ] as const;

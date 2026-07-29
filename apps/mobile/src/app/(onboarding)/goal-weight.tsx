@@ -27,13 +27,15 @@ export default function GoalWeightScreen() {
     <OnboardingScaffold
       progress={stepProgress('goal-weight')}
       title="What's your goal weight?"
+      subtitle="This sets the finish line, not the pace — you'll choose how fast to get there on the next step."
       nextDisabled={!valid}
-      onNext={() => router.push('/activity')}>
+      onNext={() => router.push('/exercise')}>
       <WeightField
         key={weightUnit}
         unit={weightUnit}
         onUnitChange={(u) => set({ weightUnit: u })}
         valueKg={goalWeightKg}
+        defaultKg={weightKg}
         onChange={(kg) => set({ goalWeightKg: kg })}
       />
 

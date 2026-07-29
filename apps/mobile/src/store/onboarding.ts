@@ -16,6 +16,8 @@ import type {
   WeightUnit,
 } from '@metabolizm/shared';
 
+import type { ExerciseBand, NeatLevel } from '@/lib/health';
+
 export type OnboardingAnswers = {
   goal?: Goal;
   sex?: Sex;
@@ -24,6 +26,15 @@ export type OnboardingAnswers = {
   heightCm?: number;
   weightKg?: number;
   goalWeightKg?: number;
+  /**
+   * The two raw activity answers. Deliberately device-local: they are collapsed
+   * into `activityLevel` by `activityLevelFrom`, and only that derived value
+   * reaches `Profile`, the API and the database. A user hydrating a profile on a
+   * new device therefore sees the derived level rather than these two answers,
+   * which is a fair trade for not versioning a shared schema over a nicety.
+   */
+  neatLevel?: NeatLevel;
+  exerciseBand?: ExerciseBand;
   activityLevel?: ActivityLevel;
   selectedPlanId?: PlanId;
   /** Signed weekly rate (kg) when the Custom plan is chosen. */

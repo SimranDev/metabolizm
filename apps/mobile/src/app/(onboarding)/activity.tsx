@@ -3,43 +3,50 @@ import { useRouter } from 'expo-router';
 import { LiveReadout } from '@/components/onboarding/live-readout';
 import { OnboardingScaffold } from '@/components/onboarding/onboarding-scaffold';
 import { OptionCard } from '@/components/onboarding/option-card';
-import { maintenanceCalories } from '@/lib/health';
-import type { ActivityLevel } from '@metabolizm/shared';
+import { activityLevelFrom, maintenanceCalories, type NeatLevel } from '@/lib/health';
 import { buildMetrics } from '@/lib/onboarding-metrics';
 import { stepProgress } from '@/lib/onboarding-steps';
 import { useOnboarding } from '@/store/onboarding';
 
-const LEVELS: { value: ActivityLevel; label: string; description: string }[] = [
-  { value: 'sedentary', label: 'Sedentary', description: 'Little or no exercise' },
-  { value: 'light', label: 'Lightly active', description: 'Light exercise 1–3 days/week' },
-  { value: 'moderate', label: 'Moderately active', description: 'Exercise 3–5 days/week' },
-  { value: 'very', label: 'Very active', description: 'Hard exercise 6–7 days/week' },
-  { value: 'athlete', label: 'Athlete', description: 'Daily training or a physical job' },
+/**
+ * Non-exercise activity only — training was asked on the previous step. The two
+ * are combined by `activityLevelFrom` into the single `ActivityLevel` the rest
+ * of the app consumes.
+ */
+const LEVELS: { value: NeatLevel; label: string; description: string }[] = [
+  { value: 'sedentary', label: 'Mostly seated', description: 'Desk work, driving, little walking' },
+  { value: 'moderate', label: 'On my feet some', description: 'Regular walking or errands' },
+  { value: 'very', label: 'On my feet all day', description: 'Physical work, or constant walking' },
 ];
 
 export default function ActivityScreen() {
   const router = useRouter();
   const answers = useOnboarding();
-  const { activityLevel, set } = answers;
+  const { neatLevel, exerciseBand, set } = answers;
 
-  // Live maintenance calories once a level is chosen (all other inputs are in).
+  // Live maintenance calories once both halves are in (all other inputs are).
   const metrics = buildMetrics(answers);
   const tdeeValue = metrics ? Math.round(maintenanceCalories(metrics)) : null;
 
   return (
     <OnboardingScaffold
       progress={stepProgress('activity')}
-      title="How active are you?"
-      subtitle="Used to estimate the calories you burn each day."
-      nextDisabled={!activityLevel}
+      title="How active is the rest of your day?"
+      subtitle="Everything outside training — work, errands, walking. This is often the bigger share of what you burn."
+      nextDisabled={!neatLevel}
       onNext={() => router.push('/plan')}>
       {LEVELS.map((l) => (
         <OptionCard
           key={l.value}
           label={l.label}
           description={l.description}
-          selected={activityLevel === l.value}
-          onPress={() => set({ activityLevel: l.value })}
+          selected={neatLevel === l.value}
+          onPress={() =>
+            set({
+              neatLevel: l.value,
+              activityLevel: activityLevelFrom(l.value, exerciseBand ?? 'light'),
+            })
+          }
         />
       ))}
 

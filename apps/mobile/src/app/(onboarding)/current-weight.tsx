@@ -44,8 +44,9 @@ export default function WeightScreen() {
     <OnboardingScaffold
       progress={stepProgress('weight')}
       title="What's your current weight?"
+      subtitle="Your starting point, and the biggest single input to your calorie baseline. Roughly right is fine — you'll weigh in again as you go."
       nextDisabled={!valid}
-      onNext={() => router.push(goal === 'maintain' ? '/activity' : '/goal-weight')}>
+      onNext={() => router.push(goal === 'maintain' ? '/exercise' : '/goal-weight')}>
       <WeightField
         key={weightUnit}
         unit={weightUnit}

@@ -25,6 +25,34 @@ export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
 };
 
 /**
+ * Non-exercise activity — work and daily life, excluding deliberate training.
+ * Asked separately from training because they move independently: a courier who
+ * never trains and a desk worker who lifts five times a week both land on
+ * "moderate" under a single question, and neither estimate is right.
+ */
+export type NeatLevel = 'sedentary' | 'moderate' | 'very';
+
+/** Deliberate training sessions per week. `unsure` is treated as `light`. */
+export type ExerciseBand = 'none' | 'light' | 'regular' | 'daily' | 'unsure';
+
+/**
+ * Collapse the two questions onto the single `ActivityLevel` the rest of the app
+ * consumes, so `Metrics`, `Profile`, `plans.ts` and the API are untouched.
+ *
+ * Written as an explicit matrix rather than an additive score: a wrong cell here
+ * shows a confident wrong calorie target, so the mapping should be readable and
+ * arguable rather than emergent.
+ */
+const ACTIVITY_MATRIX: Record<NeatLevel, Record<Exclude<ExerciseBand, 'unsure'>, ActivityLevel>> = {
+  sedentary: { none: 'sedentary', light: 'light', regular: 'moderate', daily: 'very' },
+  moderate: { none: 'light', light: 'moderate', regular: 'moderate', daily: 'very' },
+  very: { none: 'moderate', light: 'moderate', regular: 'very', daily: 'athlete' },
+};
+
+export const activityLevelFrom = (neat: NeatLevel, exercise: ExerciseBand): ActivityLevel =>
+  ACTIVITY_MATRIX[neat][exercise === 'unsure' ? 'light' : exercise];
+
+/**
  * Lowest daily intake we will recommend without professional supervision
  * (commonly cited floors: ~1200 kcal for women, ~1500 for men).
  */
