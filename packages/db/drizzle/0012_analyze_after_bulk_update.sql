@@ -1,0 +1,18 @@
+-- Hand-written, no schema change: refresh planner statistics after 0011.
+--
+-- 0011 rewrote carbs_g on ~6k rows. A bulk UPDATE like that leaves a large
+-- batch of dead tuples, and Postgres can then land on a known edge case where
+-- vacuum skips every page, divides by zero while extrapolating, and stores
+-- reltuples = Infinity. That happened to `foods` on the dev database.
+--
+-- Two consequences, both silent:
+--   1. The planner believes the table is infinitely large and picks plans for
+--      a table that does not exist.
+--   2. Anything casting reltuples to an integer fails outright. drizzle-kit
+--      studio does exactly that (`c.reltuples::BIGINT`), so Drizzle Studio
+--      dies with "Invalid response from Drizzle Kit driver" and no clue why.
+--
+-- ANALYZE recomputes the statistic and is transaction-safe (unlike VACUUM),
+-- idempotent, and fast on a catalog this size. Run it after ANY migration
+-- that rewrites a large fraction of a table.
+ANALYZE;

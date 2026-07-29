@@ -80,6 +80,23 @@ Inspect mode is a debugging stance, not a code change: app code keeps calling th
 
 Commit generated migrations (`packages/db/drizzle/`) together with the schema change.
 
+### After a bulk data migration
+
+A migration that rewrites a large fraction of a table (`0011` rewrote `carbs_g`
+on ~6k rows) leaves behind enough dead tuples to skew the planner's statistics —
+and can trip a Postgres edge case where `reltuples` ends up as `Infinity`. Two
+silent consequences: the planner picks plans for a table size that doesn't
+exist, and anything casting `reltuples` to an integer fails outright, which is
+what makes Drizzle Studio die with "Invalid response from Drizzle Kit driver".
+
+Finish the migration with `ANALYZE;` — transaction-safe (unlike `VACUUM`),
+idempotent, and fast at this scale. `0012` does exactly this, and is the
+pattern to copy. Ad hoc:
+
+```bash
+docker compose exec postgres psql -U metabolizm -d metabolizm -c 'ANALYZE;'
+```
+
 ### Viewing tables & data
 
 - `pnpm db:studio` — Drizzle Studio at <https://local.drizzle.studio>: spreadsheet-style view of every table with filtering, foreign-key navigation, and inline row edits (edits write straight to the database). Needs the dev postgres up (`docker compose up -d`).
@@ -181,4 +198,5 @@ USDA refreshes Foundation Foods each April and October — re-download and re-ru
 | `pnpm install` errors (`ERR_PNPM_*`, corrupt store) | `pnpm store prune`, then `rm -rf node_modules apps/*/node_modules packages/*/node_modules && pnpm install` |
 | Port already in use | One-liner: `kill $(lsof -ti tcp:8081)` (3000 API, 5432 postgres, 8081 Metro); or set `PORT` in `apps/api/.env` / change the compose port mapping |
 | Postgres container unhealthy or won't start | `docker compose logs postgres`; if hopeless: full reset (§3) |
+| Drizzle Studio shows "Invalid response from Drizzle Kit driver" | A table's `reltuples` statistic is `Infinity`, and drizzle-kit runs `c.reltuples::BIGINT`, which overflows. Fix: `docker compose exec postgres psql -U metabolizm -d metabolizm -c 'ANALYZE;'`. Confirm with `docker compose logs postgres \| grep 'out of range'` — the failing statement is logged. See §3 "After a bulk data migration" |
 | USDA import crashes with heap out-of-memory | The SR Legacy file needs `NODE_OPTIONS=--max-old-space-size=4096` (see §6) |
