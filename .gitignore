@@ -17,6 +17,9 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+# EAS submit — Google Play service-account key (the one real secret; never commit)
+google-play-service-account.json
+*-service-account.json
 
 # Metro
 .metro-health-check*

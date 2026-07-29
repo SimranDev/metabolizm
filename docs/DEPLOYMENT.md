@@ -358,6 +358,104 @@ Listed so a failure is diagnosable — no action expected:
 
 ---
 
+## 6. Play Store release
+
+§4 builds a sideloadable `preview` APK. A public release is a **`production`
+`.aab`** pushed through Google Play — and Play **re-signs** the app, which is the
+one fact that changes everything downstream (sign-in included).
+
+### Prerequisites
+
+| Need | Why |
+| --- | --- |
+| Google Play Developer account ($25, one-time) | Owns the app + tracks |
+| The app **created in Play Console** (manual, first time) | EAS submits to an existing listing; it cannot create one — `eas submit` fails *"App not found"* otherwise |
+| A Google Cloud **service-account JSON key** with Play access | Non-interactive upload; lives at `apps/mobile/google-play-service-account.json` (gitignored) |
+| Play **app-content** declarations complete | Data safety, content rating, target audience, privacy policy — Play blocks the *release*, not the build |
+
+### The signing gotcha — Google sign-in breaks again on Play builds
+
+**This is the §3 problem a second time, and it is silent.** Under Google **Play
+App Signing** (the default), EAS signs the `.aab` with the **upload** key — the
+EAS keystore whose SHA-1 §3 registered — but Play then **strips that signature
+and re-signs** the app users install with Google's own **app-signing** key. So
+the SHA-1 the native Google Sign-In SDK sees at runtime on a Play-installed build
+is the **app-signing** fingerprint, *not* the upload/keystore one. A build that
+signed in perfectly as a sideloaded `preview` APK returns `DEVELOPER_ERROR` from
+Play.
+
+Fix: register a **third** Android OAuth client (package `com.metabolizm.app`)
+against the **App signing key** SHA-1, found at **Play Console → Test and release
+→ Setup → App integrity → App signing key certificate**. Keep the upload-key
+client (§3) and the debug client too — an app may have one OAuth client per
+signing key. `preview`/internal APKs are delivered exactly as EAS signed them, so
+§3's upload-key SHA-1 is correct *there*; only Play-distributed builds get
+re-signed.
+
+### eas.json (already wired)
+
+- `build.production.android.buildType: "app-bundle"` — Play rejects an APK for a
+  new app; a release must be an `.aab`.
+- `submit.production.android` — `serviceAccountKeyPath` points at the gitignored
+  key, `track: "internal"` (start there), `releaseStatus: "completed"`.
+- `appVersionSource: "remote"` + `autoIncrement` still own `versionCode`, so it
+  climbs on every build with nothing to edit. Bump the **user-facing** `version`
+  (`app.json`, currently `1.0.0`) by hand only when you want a new versionName;
+  it is independent of the build's versionCode.
+
+### Service account
+
+1. Google Cloud console (the same project as the OAuth clients) → **IAM & Admin →
+   Service Accounts** → create one → **create a JSON key** → save it to
+   `apps/mobile/google-play-service-account.json`.
+2. **Play Console → Setup → API access** → link that Cloud project → under
+   *Service accounts* grant it release permission for at least the target track.
+
+The key is the one real secret here (like the web client secret in §1) — it is
+gitignored; never commit it. For CI, use `eas secret:create --type file` instead
+of the on-disk path.
+
+### Build and submit
+
+```bash
+cd apps/mobile
+# If this is a new user-facing version, bump `version` in app.json and commit —
+# EAS archives the git tree and refuses a dirty one.
+npx eas-cli@latest build  -p android --profile production           # → .aab, versionCode auto-bumped
+npx eas-cli@latest submit -p android --latest --profile production  # uploads to the internal track
+```
+
+`eas build … --submit` does both in one step. Watch it with
+`eas submit:list -p android`.
+
+### Tracks — promote, don't rebuild
+
+`internal` (≤100 testers, no review wait) → `alpha` (closed) → `beta` (open) →
+`production` (public, full review). Start on `internal`; for the public launch
+set `"track": "production"` (add `"releaseStatus": "inProgress"` + `"rollout":
+0.1` for a staged 10% rollout), or promote an already-uploaded build inside the
+Console without a new build.
+
+### First-release checklist (Play Console, one-time)
+
+Create the app, then complete: the Data-safety form, content-rating
+questionnaire, target-audience, a hosted privacy-policy URL, the store listing
+(title, description, screenshots, 1024×500 feature graphic), and
+pricing/distribution. EAS uploads the binary; Play will not let it go live until
+these are done. The 512px `playstore-icon.png` the icon pipeline emits is the
+listing icon (uploaded in the Console, not referenced by `app.json`).
+
+### Symptom → cause
+
+| Symptom | Cause |
+| --- | --- |
+| `DEVELOPER_ERROR` on a Play build that worked as a `preview` APK | The **app-signing** SHA-1 isn't a registered Android OAuth client — the signing gotcha above |
+| `eas submit`: *"App not found"* | The app isn't created in Play Console yet — do it manually first |
+| `eas submit`: *"service account lacks permission"* | Grant the track permission in Play Console → API access |
+| Play rejects the upload as not acceptable | An APK was built, not an `.aab` — `production` must be `buildType: "app-bundle"` |
+
+---
+
 ## Not covered here
 
 - **OTA updates.** `expo.modules.updates.ENABLED` is `false`, so every JS change
@@ -365,6 +463,4 @@ Listed so a failure is diagnosable — no action expected:
   separate change.
 - **iOS.** Needs Xcode on the build machine, a paid Apple Developer account, an
   iOS OAuth client, and the real `iosUrlScheme` in `app.json`.
-- **Play Store release.** Needs a keystore decision (EAS-managed vs Play App
-  Signing), an `.aab` profile, and a `submit` block in `eas.json`.
 - **Custom domain, database backups, log drains, rate limiting.**
