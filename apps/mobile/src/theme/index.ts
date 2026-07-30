@@ -2,6 +2,7 @@ export {
   dark,
   light,
   macroColor,
+  macroSoftColor,
   macroTextColor,
   type MacroKind,
   type ThemeColors,

@@ -56,6 +56,14 @@ const lightBase = {
   onPrimary: '#FAFBF9',
   secondary: '#3F6E92',
   onSecondary: '#FFFFFF',
+  // A filled action that must NOT read as accent or brand — currently the nav's
+  // add button, which sits beside the lime active-tab indicator and would
+  // compete with it. Same grey-green family as `text`/`textSecondary`, lifted
+  // ~6% in lightness off `text` so it stays the most prominent thing in the bar
+  // without going stark. Dark's value is the exception: `text` is already at
+  // ~94% lightness there, so it takes what headroom is left rather than a
+  // literal +6, which would just be white.
+  actionNeutral: '#203331',
   accent: '#C7F239',
   onAccent: '#2A3A00',
   accentText: '#5C7300',
@@ -83,6 +91,10 @@ export const light = {
   ...lightBase,
   actionPrimary: lightBase.primary,
   onActionPrimary: lightBase.onPrimary,
+  // The canvas colour is the readable foreground on `actionNeutral` in both
+  // schemes, since that fill is a near-`text` value. Aliased rather than
+  // restated so the pair can never drift.
+  onActionNeutral: lightBase.bg,
   inkStrong: lightBase.primary,
 };
 
@@ -107,6 +119,10 @@ const darkBase = {
   onPrimary: '#2A3A00',
   secondary: '#2A4A50',
   onSecondary: '#ECF2EF',
+  // See light's note. `text` here is #ECF2EF at ~94% lightness, so this is a
+  // ~3.5pp lift — all the headroom there is before the circle is simply white
+  // and blooms against the near-black bar.
+  actionNeutral: '#F5FAF8',
   accent: '#C7F239',
   onAccent: '#2A3A00',
   accentText: '#C7F239',
@@ -141,6 +157,7 @@ export const dark: ThemeColors = {
   ...darkBase,
   actionPrimary: darkBase.primary,
   onActionPrimary: darkBase.onPrimary,
+  onActionNeutral: darkBase.bg,
   inkStrong: darkBase.text,
 };
 
@@ -162,4 +179,13 @@ export function macroTextColor(colors: ThemeColors, macro: MacroKind): string {
     : macro === 'carbs'
       ? colors.macroCarbsText
       : colors.macroFatText;
+}
+
+/** Soft-tinted fill for a macro chip. Pair with `macroTextColor` on top. */
+export function macroSoftColor(colors: ThemeColors, macro: MacroKind): string {
+  return macro === 'protein'
+    ? colors.macroProteinSoft
+    : macro === 'carbs'
+      ? colors.macroCarbsSoft
+      : colors.macroFatSoft;
 }

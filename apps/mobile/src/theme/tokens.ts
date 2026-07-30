@@ -19,6 +19,12 @@ export const Radius = {
   sm: 6,
   md: 10,
   lg: 14,
+  // Off the 6/10/14 progression on purpose: this is the OS sheet corner, which
+  // sits at a much larger radius than any in-page surface on both platforms.
+  // It has to be one shared number because a form sheet is rounded twice — the
+  // native `sheetCornerRadius` and the content's own background, which would
+  // otherwise square the native corners off again.
+  sheet: 24,
   pill: 999,
 } as const;
 
