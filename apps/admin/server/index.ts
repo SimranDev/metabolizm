@@ -8,6 +8,7 @@ import { loadEnv } from "./env";
 import { registerFoodRoutes } from "./foods";
 import { registerParseRoute } from "./parse";
 import { registerReviewRoutes } from "./review";
+import { registerSyncRoutes } from "./sync";
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -17,8 +18,11 @@ async function main(): Promise<void> {
   app.get("/api/health", () => ({ ok: true }));
   registerFoodRoutes(app, db);
   registerParseRoute(app);
-  // The only routes here that touch user-owned foods — see review.ts.
+  // The only routes here that EDIT user-owned foods — see review.ts.
   registerReviewRoutes(app, db, env);
+  // Copies user graphs from a live database into this one. Reads live in
+  // `read only` transactions and refuses to write anywhere but localhost.
+  registerSyncRoutes(app, db, env);
   app.addHook("onClose", async () => {
     await db.$client.end();
   });

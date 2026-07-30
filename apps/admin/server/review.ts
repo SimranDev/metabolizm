@@ -1,5 +1,7 @@
 /**
- * Catalog review queue — the ONLY routes in this tool that touch USER foods.
+ * Catalog review queue — the ONLY routes in this tool that EDIT user foods.
+ * (sync.ts copies user rows, foods included, but verbatim from a live database:
+ * it never derives, corrects or decides anything about one.)
  *
  * foods.ts guards the system catalog with systemFood() (owner_id IS NULL).
  * That filter is deliberately not loosened to cover review; this module has

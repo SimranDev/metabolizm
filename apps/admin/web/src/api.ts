@@ -95,6 +95,85 @@ export type ParsedFood = {
 
 export type ParseResponse = { food: ParsedFood; warnings: string[] };
 
+// Sync tab — live → local. Mirrors the types in server/sync.ts and
+// server/sync-plan.ts (web/tsconfig.json only includes web/src, so these are
+// declared here rather than imported, same as the food rows above).
+export type DbIdentity = {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  loopback: boolean;
+};
+
+export type SyncStatus = {
+  configured: boolean;
+  ready: boolean;
+  reason: string | null;
+  source: DbIdentity | null;
+  target: DbIdentity;
+};
+
+export type SyncUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  timezone: string;
+  region: string;
+  createdAt: string;
+  live: {
+    diaryEntries: number;
+    weightEntries: number;
+    groups: number;
+    foods: number;
+  };
+  /** null when the account does not exist locally at all. */
+  local: { diaryEntries: number; weightEntries: number } | null;
+};
+
+export type ColumnChange = { column: string; from: string; to: string };
+export type RowChange = { label: string; changes: ColumnChange[] };
+
+export type TablePlan = {
+  table: string;
+  insert: number;
+  update: number;
+  unchanged: number;
+  skipped: number;
+  localOnly: number;
+  pruned: number;
+  prunable: boolean;
+  changedColumns: Record<string, number>;
+  samples: { inserts: string[]; updates: RowChange[]; localOnly: string[] };
+};
+
+export type SyncPlan = {
+  applied: boolean;
+  pruneRequested: boolean;
+  users: {
+    id: string;
+    email: string;
+    name: string;
+    role: "selected" | "dependency";
+  }[];
+  tables: TablePlan[];
+  totals: {
+    insert: number;
+    update: number;
+    unchanged: number;
+    localOnly: number;
+    pruned: number;
+  };
+  blockers: { table: string; message: string }[];
+  warnings: string[];
+};
+
+export type SyncRequest = {
+  userIds: string[];
+  includeGroups: boolean;
+  prune: boolean;
+};
+
 export class ApiError extends Error {
   status: number;
 
@@ -172,5 +251,22 @@ export const api = {
   resolveReport: (id: string) =>
     request<{ id: string }>(`/api/review/reports/${id}/resolve`, {
       method: "POST",
+    }),
+
+  // Sync — the live database is read-only here; only the local one is written.
+  syncStatus: () => request<SyncStatus>("/api/sync/status"),
+  syncUsers: (q: string) =>
+    request<{ items: SyncUserRow[] }>(
+      `/api/sync/users?${new URLSearchParams(q ? { q } : {}).toString()}`,
+    ),
+  syncPlan: (body: SyncRequest) =>
+    request<SyncPlan>("/api/sync/plan", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  syncApply: (body: SyncRequest) =>
+    request<SyncPlan>("/api/sync/apply", {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 };

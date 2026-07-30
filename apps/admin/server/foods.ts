@@ -6,8 +6,10 @@
  * systemFood() filter below.
  *
  * `systemFood()` must NOT be loosened. review.ts is the one place in this tool
- * that touches USER rows, and it does so through its own separate userFood()
+ * that EDITS user rows, and it does so through its own separate userFood()
  * filter precisely so these routes cannot start editing user foods by accident.
+ * (sync.ts also reaches user rows, but only ever copies them verbatim from a
+ * live database — it interprets nothing and edits nothing.)
  */
 import { foodPortions, foods } from "@metabolizm/db";
 import type { FoodDto, FoodPortionDto } from "@metabolizm/shared";

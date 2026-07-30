@@ -13,6 +13,15 @@ const envSchema = z.object({
    * that happens, not after.
    */
   ADMIN_REVIEWER_ID: z.uuid().optional(),
+  /**
+   * The LIVE database, read-only source for the Sync tab (server/sync.ts).
+   * Optional — leave it unset and sync reports itself as unconfigured rather
+   * than failing. Never written to: every source read runs in a `read only`
+   * transaction, and sync refuses to run at all unless DATABASE_URL (the
+   * WRITE side) points at a loopback host, so a swapped pair can't push local
+   * test data into production.
+   */
+  SOURCE_DATABASE_URL: z.url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
