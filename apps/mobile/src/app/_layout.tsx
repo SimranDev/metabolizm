@@ -27,7 +27,7 @@ import { usersApi } from '@/lib/api';
 import { routeFromNotification } from '@/lib/push';
 import { initDayRollover } from '@/store/diary';
 import { useProfile, useProfileHydrated } from '@/store/profile';
-import { ThemeProvider, useTheme } from '@/theme';
+import { Radius, ThemeProvider, useTheme } from '@/theme';
 import { initWidgetSync } from '@/widgets/sync';
 
 SplashScreen.preventAutoHideAsync();
@@ -123,6 +123,21 @@ export default function RootLayout() {
                 behind a create form in the back stack. */}
             <Stack.Screen name="create-food" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="scan-barcode" options={{ presentation: 'fullScreenModal' }} />
+            {/* The add-food selection, reviewable before it is committed. A
+                form sheet over the add-food modal, so the results list stays
+                visible behind it. A fixed detent rather than `fitToContents`:
+                the list is however many foods the user picked, so the content
+                has to be allowed to scroll inside a known height. */}
+            <Stack.Screen
+              name="review-selection"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: [0.7],
+                sheetCornerRadius: Radius.sheet,
+                sheetGrabberVisible: false,
+                contentStyle: { backgroundColor: 'transparent' },
+              }}
+            />
             {/* Groups drill-downs push above the tabs — they carry their own
                 header, since the persistent AppHeader belongs to the tab group.
                 Create and join are pushes, not modals: both `replace` themselves
@@ -148,6 +163,22 @@ export default function RootLayout() {
             <Stack.Screen name="profile/units" />
             <Stack.Screen name="profile/region" />
             <Stack.Screen name="profile/appearance" />
+            {/* The add sheet, opened by the raised "+" in the middle of the
+                tab bar. Same native form sheet as the calendar below, and at
+                the root stack for the same reason: it opens over any tab. */}
+            <Stack.Screen
+              name="add-entry"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: 'fitToContents',
+                sheetCornerRadius: Radius.sheet,
+                // The screen draws its own handle: `sheetGrabberVisible` is
+                // iOS-only, so relying on it leaves Android with no drag
+                // affordance at all.
+                sheetGrabberVisible: false,
+                contentStyle: { backgroundColor: 'transparent' },
+              }}
+            />
             {/* The calendar. A native form sheet, so the OS owns the drag,
                 detents and dismiss — no bottom-sheet library in the bundle. */}
             <Stack.Screen
