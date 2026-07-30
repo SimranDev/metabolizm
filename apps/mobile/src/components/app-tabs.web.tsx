@@ -36,6 +36,11 @@ export default function AppTabs() {
           <TabTrigger name="recipes" href="/recipes" asChild>
             <TabButton>Recipes</TabButton>
           </TabTrigger>
+          {/* No `add` trigger either, even though `(tabs)/add.tsx` exists:
+              that route is only a reserved slot for the native bar to lay the
+              raised "+" over, and this floating pill header has no slots to
+              reserve. Web is not a shipping target, so the gap is recorded
+              rather than reimplemented — same as the badge above. */}
           {/* No Profile trigger: it pushes at the root stack from the
               AppHeader's profile button. See src/app/profile/index.tsx. */}
         </CustomTabList>
