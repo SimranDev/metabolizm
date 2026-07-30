@@ -32,6 +32,7 @@
     "plugins": [
       "./plugins/with-workmanager-fix",
       "./plugins/with-auth-backup-rules",
+      "./plugins/with-tab-bar-density",
       "expo-router",
       [
         "expo-splash-screen",

@@ -342,6 +342,29 @@ td.mismatch {
   color: var(--danger);
 }
 
+/* Sync tab. Checkboxes must opt out of the full-width input rule above. */
+input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+.sync .search input {
+  max-width: 380px;
+}
+
+.change {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.change:last-child {
+  border-bottom: none;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;

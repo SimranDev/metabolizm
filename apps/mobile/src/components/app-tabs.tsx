@@ -17,13 +17,25 @@ export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={colors.surface}
+      // Android only. Material's default is `auto`, which at 4+ tabs means
+      // `selected`: labels are hidden until a tab is chosen, and the icon
+      // slides up to make room for the one that appears. `labeled` keeps all
+      // four labels on screen permanently — the destinations stay readable
+      // without tapping, and nothing moves on selection. No-op on iOS, where
+      // UITabBar always labels its items.
+      labelVisibilityMode="labeled"
       // Active item is the single allowed accent use in the nav: a lime pill
-      // with `onAccent` icon + label, in both schemes.
+      // holding an `onAccent` icon, with the label accented beneath it.
       indicatorColor={colors.accent}
       iconColor={{ default: colors.textSecondary, selected: colors.onAccent }}
       labelStyle={{
         default: { fontFamily: Fonts.sansMedium, color: colors.textSecondary },
-        selected: { color: colors.onAccent, fontFamily: Fonts.sansMedium },
+        // The M3 indicator pill wraps the icon only — the label sits below it
+        // on `surface`, so it takes `accentText` (the accent-as-text role:
+        // lime in dark, olive in light) and never `onAccent`. `onAccent` is
+        // ink meant for the lime fill; on the dark surface it was ~1.4:1 and
+        // the selected tab read as having no label at all.
+        selected: { color: colors.accentText, fontFamily: Fonts.sansMedium },
       }}>
       {/* Log owns the index route so it's the landing tab. */}
       <NativeTabs.Trigger name="index">
