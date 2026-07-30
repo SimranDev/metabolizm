@@ -127,6 +127,9 @@ export const formatWeekday = (day: string) => fmt(day, { weekday: "long" });
 export const formatMonth = (day: string) =>
   fmt(day, { month: "long", year: "numeric" });
 
+/** "Jul" — the month alone, for the add sheet's compact date chip. */
+export const formatMonthShort = (day: string) => fmt(day, { month: "short" });
+
 /** Day of month as a bare number string, e.g. "22". */
 export const formatDayOfMonth = (day: string) => String(Number(day.slice(8, 10)));
 
