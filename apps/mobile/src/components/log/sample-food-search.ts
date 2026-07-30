@@ -29,6 +29,21 @@ export const INPUT_METHODS = [
 
 export type InputMethodId = (typeof INPUT_METHODS)[number]["id"];
 
+/**
+ * Narrows an untrusted `method` route param, falling back to "search".
+ *
+ * **"barcode" is not a valid opening method**, even though it is a valid
+ * `InputMethodId`: the scanner is its own route with its own camera and
+ * viewfinder, entered by pressing that tile. Arriving on the add-food screen
+ * with it preselected would show the "Opening the scanner…" placeholder and
+ * then open nothing. Anything wanting the scanner routes to `/scan-barcode`.
+ */
+export function toOpeningMethod(value: string | undefined): InputMethodId {
+  return INPUT_METHODS.some((m) => m.id === value && m.id !== "barcode")
+    ? (value as InputMethodId)
+    : "search";
+}
+
 /** Display label for a meal id, e.g. "dinner" → "Dinner". */
 export function mealLabel(meal: string): string {
   return meal.charAt(0).toUpperCase() + meal.slice(1);

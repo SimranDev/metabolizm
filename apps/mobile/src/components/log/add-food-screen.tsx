@@ -1,15 +1,23 @@
 import { FontAwesomeFreeSolid } from "@react-native-vector-icons/fontawesome-free-solid";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { SelectionDock } from "@/components/log/selection-dock";
 import { MIN_QUERY_LENGTH, useFoodSearch } from "@/hooks/use-food-search";
 import { dayKey, formatShortDate } from "@/lib/dates";
 import { toQuickAdd } from "@/lib/food";
@@ -30,16 +38,27 @@ import {
 type Props = {
   /** Meal id from the route (e.g. "dinner"); drives the title and CTA label. */
   meal: string;
+  /**
+   * Which input tile is selected when the screen opens. Read once, as the
+   * initial state — the tiles are the user's from then on, and this modal is
+   * mounted fresh each time it is presented, so there is nothing to sync back.
+   */
+  method: InputMethodId;
 };
 
 /**
- * Food-adding screen shown as a modal from the Log tab's "+" buttons. Search
- * hits the catalog API (see `useFoodSearch`); short/empty queries fall back to
- * the persisted recents list. Barcode opens the scanner route; photo and voice
- * are still placeholders. "Add to {meal}" commits the multi-selection to the
- * diary.
+ * Food-adding screen shown as a modal from the Log tab's "+" buttons and from
+ * the add sheet's Search cell. Search hits the catalog API (see
+ * `useFoodSearch`); short/empty queries fall back to the persisted recents
+ * list. Barcode opens the scanner route; photo and voice are still
+ * placeholders.
+ *
+ * The multi-selection is committed from `SelectionDock` at the bottom — a dock
+ * that stays above the keyboard, since searching keeps it up for most of the
+ * session and the running total is what you want visible while typing. The
+ * dock's review row opens `/review-selection`, which edits the same store.
  */
-export function AddFoodScreen({ meal }: Props) {
+export function AddFoodScreen({ meal, method: openingMethod }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -69,7 +88,7 @@ export function AddFoodScreen({ meal }: Props) {
     clearSelection();
   }, [clearSelection]);
 
-  const [method, setMethod] = useState<InputMethodId>("search");
+  const [method, setMethod] = useState<InputMethodId>(openingMethod);
   const [filter, setFilter] = useState<FoodFilterId>("all");
   const [query, setQuery] = useState("");
 
@@ -93,7 +112,6 @@ export function AddFoodScreen({ meal }: Props) {
   );
 
   const selected = Object.values(selectedItems);
-  const selectedCalories = selected.reduce((sum, f) => sum + f.calories, 0);
 
   return (
     <ThemedView style={styles.container}>
@@ -105,110 +123,115 @@ export function AddFoodScreen({ meal }: Props) {
         insetTop={insets.top}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.methods}>
-          {INPUT_METHODS.map((m) => (
-            <MethodButton
-              key={m.id}
-              icon={m.icon}
-              label={m.label}
-              active={method === m.id}
-              // Barcode is a route, not a panel: it owns the camera and a
-              // full-screen viewfinder, and replaces itself with whatever the
-              // scan resolves to.
-              onPress={() =>
-                m.id === "barcode" ? router.push("/scan-barcode") : setMethod(m.id)
-              }
-            />
-          ))}
-        </View>
-
-        <Input
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search for a food"
-          returnKeyType="search"
-          autoCorrect={false}
-          leading={
-            <FontAwesomeFreeSolid name="magnifying-glass" size={16} color={colors.textSecondary} />
-          }
-          trailing={
-            query.length > 0 ? (
-              <Pressable accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={Spacing.s8}>
-                <FontAwesomeFreeSolid name="xmark" size={16} color={colors.textSecondary} />
-              </Pressable>
-            ) : undefined
-          }
-        />
-
-        <View style={[styles.filters, { borderBottomColor: colors.border }]}>
-          {FOOD_FILTERS.map((f) => (
-            <FilterTab key={f.id} label={f.label} active={filter === f.id} onPress={() => setFilter(f.id)} />
-          ))}
-        </View>
-
-        {method !== "search" ? (
-          <MethodPlaceholder method={method} />
-        ) : showingSearch && loading ? (
-          <View style={styles.centerState}>
-            <ActivityIndicator color={colors.textSecondary} />
-          </View>
-        ) : showingSearch && error ? (
-          <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
-            {error}
-          </ThemedText>
-        ) : list.length === 0 ? (
-          <View>
-            <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
-              {showingSearch ? `No foods matching "${trimmed}"` : "Nothing here yet"}
-            </ThemedText>
-            {/* The empty state is the moment someone wants this most —
-                NZ/AU barcode and product coverage is thin, so "not found"
-                is a routine outcome rather than an edge case. */}
-            <CreateFoodRow query={showingSearch ? trimmed : ""} />
-          </View>
-        ) : (
-          // `collapsable={false}` keeps this wrapper as a real native view. Without
-          // it, Fabric flattens the styleless container and hoists the rows into the
-          // ScrollView; re-evaluating that on each selection re-render reparents an
-          // already-mounted row and crashes ("child already has a parent" / addViewAt).
-          <View collapsable={false}>
-            <ThemedText type="micro" themeColor="textSecondary" style={styles.sectionLabel}>
-              {showingSearch ? "Results" : "Recent"}
-            </ThemedText>
-            {list.map((item) => (
-              <FoodRow
-                key={item.foodId}
-                item={item}
-                trust={trustById.get(item.foodId) ?? null}
-                selected={!!selectedItems[item.foodId]}
-                onToggle={() => toggle(item)}
-                onOpen={() =>
-                  router.push({
-                    pathname: "/food-detail",
-                    params: { foodId: item.foodId, meal, mode: "add" },
-                  })
+      {/* The dock rides inside this, so it lifts with the keyboard instead of
+          being buried under it while the user types a query. */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.methods}>
+            {INPUT_METHODS.map((m) => (
+              <MethodButton
+                key={m.id}
+                icon={m.icon}
+                label={m.label}
+                active={method === m.id}
+                // Barcode is a route, not a panel: it owns the camera and a
+                // full-screen viewfinder, and replaces itself with whatever the
+                // scan resolves to.
+                onPress={() =>
+                  m.id === "barcode" ? router.push("/scan-barcode") : setMethod(m.id)
                 }
               />
             ))}
-            <CreateFoodRow query={showingSearch ? trimmed : ""} />
           </View>
-        )}
-      </ScrollView>
 
-      <Footer
-        count={selected.length}
-        calories={selectedCalories}
-        mealName={label}
-        insetBottom={insets.bottom}
-        onAdd={() => {
-          addEntries(toMealId(meal), selected);
-          router.back();
-        }}
-      />
+          <Input
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search for a food"
+            returnKeyType="search"
+            autoCorrect={false}
+            leading={
+              <FontAwesomeFreeSolid name="magnifying-glass" size={16} color={colors.textSecondary} />
+            }
+            trailing={
+              query.length > 0 ? (
+                <Pressable accessibilityLabel="Clear search" onPress={() => setQuery("")} hitSlop={Spacing.s8}>
+                  <FontAwesomeFreeSolid name="xmark" size={16} color={colors.textSecondary} />
+                </Pressable>
+              ) : undefined
+            }
+          />
+
+          <View style={[styles.filters, { borderBottomColor: colors.border }]}>
+            {FOOD_FILTERS.map((f) => (
+              <FilterTab key={f.id} label={f.label} active={filter === f.id} onPress={() => setFilter(f.id)} />
+            ))}
+          </View>
+
+          {method !== "search" ? (
+            <MethodPlaceholder method={method} />
+          ) : showingSearch && loading ? (
+            <View style={styles.centerState}>
+              <ActivityIndicator color={colors.textSecondary} />
+            </View>
+          ) : showingSearch && error ? (
+            <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
+              {error}
+            </ThemedText>
+          ) : list.length === 0 ? (
+            <View>
+              <ThemedText type="sm" themeColor="textSecondary" style={styles.emptyState}>
+                {showingSearch ? `No foods matching "${trimmed}"` : "Nothing here yet"}
+              </ThemedText>
+              {/* The empty state is the moment someone wants this most —
+                  NZ/AU barcode and product coverage is thin, so "not found"
+                  is a routine outcome rather than an edge case. */}
+              <CreateFoodRow query={showingSearch ? trimmed : ""} />
+            </View>
+          ) : (
+            // `collapsable={false}` keeps this wrapper as a real native view. Without
+            // it, Fabric flattens the styleless container and hoists the rows into the
+            // ScrollView; re-evaluating that on each selection re-render reparents an
+            // already-mounted row and crashes ("child already has a parent" / addViewAt).
+            <View collapsable={false}>
+              <ThemedText type="micro" themeColor="textSecondary" style={styles.sectionLabel}>
+                {showingSearch ? "Results" : "Recent"}
+              </ThemedText>
+              {list.map((item) => (
+                <FoodRow
+                  key={item.foodId}
+                  item={item}
+                  trust={trustById.get(item.foodId) ?? null}
+                  selected={!!selectedItems[item.foodId]}
+                  onToggle={() => toggle(item)}
+                  onOpen={() =>
+                    router.push({
+                      pathname: "/food-detail",
+                      params: { foodId: item.foodId, meal, mode: "add" },
+                    })
+                  }
+                />
+              ))}
+              <CreateFoodRow query={showingSearch ? trimmed : ""} />
+            </View>
+          )}
+        </ScrollView>
+
+        <SelectionDock
+          meal={meal}
+          mealLabel={label}
+          items={selected}
+          onAdd={() => {
+            addEntries(toMealId(meal), selected);
+            router.back();
+          }}
+        />
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -452,47 +475,15 @@ function MethodPlaceholder({ method }: { method: InputMethodId }) {
   );
 }
 
-function Footer({
-  count,
-  calories,
-  mealName,
-  insetBottom,
-  onAdd,
-}: {
-  count: number;
-  calories: number;
-  mealName: string;
-  insetBottom: number;
-  onAdd: () => void;
-}) {
-  const { colors } = useTheme();
-  const disabled = count === 0;
-  return (
-    <ThemedView
-      style={[
-        styles.footer,
-        { paddingBottom: insetBottom + Spacing.s8, borderTopColor: colors.border },
-      ]}>
-      <View>
-        <ThemedText type="sm" themeColor="textSecondary" tabular>
-          {count} {count === 1 ? "item" : "items"} selected
-        </ThemedText>
-        <ThemedText type="h3" tabular>
-          {calories.toLocaleString()} cal
-        </ThemedText>
-      </View>
-
-      <Button label={`Add to ${mealName}`} disabled={disabled} onPress={onAdd} />
-    </ThemedView>
-  );
-}
-
 type FoodSearchIconName = (typeof INPUT_METHODS)[number]["icon"];
 
 const CIRCLE = 34;
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  flex: {
     flex: 1,
   },
   header: {
@@ -612,14 +603,6 @@ const styles = StyleSheet.create({
   centerState: {
     alignItems: "center",
     paddingVertical: Spacing.s32,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.s24,
-    paddingTop: Spacing.s16,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   pressed: {
     opacity: 0.6,
