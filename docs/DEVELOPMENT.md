@@ -200,11 +200,11 @@ docker run --rm --entrypoint node \
 
 ## 6. Admin tool (internal, dev-only)
 
-Food-catalog admin at [apps/admin](../apps/admin): paste a USDA FoodData Central food JSON (deterministically mapped to a per-100 food record — no LLM) or start from a blank form, review, insert into the **system** catalog (`ownerId null`, `source system`, public, verified). Never deployed.
+Food-catalog admin at [apps/admin](../apps/admin): paste a USDA FoodData Central food JSON (deterministically mapped to a per-100 food record — no LLM) or start from a blank form, review, insert into the **system** catalog (`ownerId null`, `source system`, public, verified). Also hosts the review queue and the live→local **Sync** tab (below). Never deployed.
 
 ```bash
 docker compose up -d                          # same dev postgres as the api
-cp apps/admin/.env.example apps/admin/.env    # DATABASE_URL, PORT
+cp apps/admin/.env.example apps/admin/.env    # DATABASE_URL, PORT, optional SOURCE_DATABASE_URL
 pnpm admin                                    # Fastify :4000 + Vite SPA → http://localhost:5173
 ```
 
@@ -222,6 +222,27 @@ NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter admin import:usda data/Food
 ```
 
 USDA refreshes Foundation Foods each April and October — re-download and re-run to pick up changes. The summary reports inserted/updated/skipped counts and a histogram of FDC nutrients not yet in the shared registry.
+
+### Sync (pull live accounts into local)
+
+The **Sync** tab copies a user graph from the live database into your local one, so a test account on Railway can be reproduced on a laptop — its diary, weigh-ins, targets, custom foods, groups and memberships. Set the live connection string (Railway → Postgres service → *Connect* → public connection URL) in `apps/admin/.env`:
+
+```bash
+SOURCE_DATABASE_URL=postgres://user:pass@host.proxy.rlwy.net:12345/railway
+```
+
+**One direction, always.** `SOURCE_DATABASE_URL` is read-only (every read runs in a `read only` transaction) and `DATABASE_URL` is the only thing written. Sync refuses to start unless `DATABASE_URL` points at a **loopback host** — there is no override, because that is the guard against a `.env` with the two URLs the wrong way round pushing local test data into production. It also refuses when both URLs name the same database.
+
+Workflow: search live accounts (the list shows how much data each carries and whether it exists locally) → tick some → **Preview** → **Apply**. Preview reads both databases and writes nothing; Apply runs the same collection again inside one local transaction, so a failure leaves nothing half-written. Both report per table: new / changed / identical / local-only, with the changed **columns** and a sample of rows as `before → after`.
+
+Worth knowing:
+
+- **`accounts` is copied, so you can sign in as the synced user** with their real password. `sessions`, `verifications` and `device_push_tokens` are deliberately **not** — a live push token would let a local dev send fire a notification at a real phone.
+- **Co-members arrive as an identity only.** Pulling a group pulls every membership, which needs those `users` rows to exist; they come with no diary, weight or targets, so their day cards will legitimately be empty.
+- **System foods are matched on `source_ref`, not id.** Each database ran the USDA import separately, so the same food has two UUIDs. The local row wins and the incoming diary references are rewritten to it — nothing is duplicated and no local catalog row is overwritten.
+- **Prune** (off by default) deletes rows the selected accounts have locally but not on live. Scoped to their own rows: never another member's, never a `groups` or `users` row, never the system catalog.
+- **Blockers** stop an Apply rather than guessing: a local account already using that email under a different id, or a local food holding an incoming barcode. Both need a human decision.
+- `daily_summaries` rows are copied as-is. If you suspect them, `pnpm --filter api backfill:summaries` recomputes from the diary entries that came with them.
 
 ## 7. Troubleshooting
 
