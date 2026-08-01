@@ -33,8 +33,8 @@ export default function AppTabs() {
           <TabTrigger name="groups" href="/groups" asChild>
             <TabButton>Groups</TabButton>
           </TabTrigger>
-          <TabTrigger name="recipes" href="/recipes" asChild>
-            <TabButton>Recipes</TabButton>
+          <TabTrigger name="toolbox" href="/toolbox" asChild>
+            <TabButton>Toolbox</TabButton>
           </TabTrigger>
           {/* No `add` trigger either, even though `(tabs)/add.tsx` exists:
               that route is only a reserved slot for the native bar to lay the

@@ -1,8 +1,10 @@
 export * from "./catalog";
 export * as diaryApi from "./diary";
+export * as fastingApi from "./fasting";
 export * as groupsApi from "./groups";
 export * as pushApi from "./push";
 export * as summariesApi from "./summaries";
+export * as waterApi from "./water";
 export * as weightApi from "./weight";
 export * as usersApi from "./users";
 export { ApiError } from "./client";

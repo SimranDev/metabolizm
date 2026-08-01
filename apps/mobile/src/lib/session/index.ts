@@ -15,10 +15,12 @@ import { usersApi } from "@/lib/api";
 import { signOut } from "@/lib/auth";
 import { unregisterForPush } from "@/lib/push";
 import { useDiary } from "@/store/diary";
+import { useFasting } from "@/store/fasting";
 import { useGroups } from "@/store/groups";
 import { useOnboarding } from "@/store/onboarding";
 import { useProfile } from "@/store/profile";
 import { useSummaries } from "@/store/summaries";
+import { useWater } from "@/store/water";
 import { useWeight } from "@/store/weight";
 
 /**
@@ -32,6 +34,8 @@ export function clearLocalData(): void {
   useDiary.getState().reset();
   useSummaries.getState().reset();
   useWeight.getState().reset();
+  useWater.getState().reset();
+  useFasting.getState().reset();
   useGroups.getState().reset();
   useOnboarding.getState().reset();
   // Last: flipping `onboardingComplete` moves the root Stack back to the

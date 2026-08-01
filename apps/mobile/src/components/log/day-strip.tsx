@@ -31,7 +31,7 @@ const CELL = 44;
  * The week of the selected day, with each day's calorie progress as a ring.
  *
  * Lives on the Log tab rather than in AppHeader: the header renders above all
- * five tabs, and a selected date means nothing on Recipes or Groups — putting
+ * five tabs, and a selected date means nothing on Toolbox or Groups — putting
  * the strip there would also redraw seven rings on every tab switch.
  *
  * Paints entirely from local diary entries via useDayStates, so a cold start

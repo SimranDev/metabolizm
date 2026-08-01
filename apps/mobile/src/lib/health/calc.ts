@@ -99,6 +99,17 @@ export const minHealthyWeightKg = (heightCm: number): number => {
   return 18.5 * m * m;
 };
 
+/**
+ * Weight (kg) at the upper edge of a healthy BMI for a given height — the 25.0
+ * boundary `bmiCategory` uses. Here rather than in a screen so the two
+ * thresholds cannot drift apart: a range whose ends disagree with the category
+ * label beside them is a wrong answer that still looks entirely reasonable.
+ */
+export const maxHealthyWeightKg = (heightCm: number): number => {
+  const m = heightCm / 100;
+  return 25 * m * m;
+};
+
 /** Max weekly rate we consider safe: ~1% of bodyweight per week. */
 export const safeWeeklyRateKg = (weightKg: number): number => weightKg * 0.01;
 

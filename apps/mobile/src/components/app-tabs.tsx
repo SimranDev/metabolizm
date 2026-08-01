@@ -79,9 +79,9 @@ export default function AppTabs() {
         </NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="recipes">
-        <NativeTabs.Trigger.Label>Recipes</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
+      <NativeTabs.Trigger name="toolbox">
+        <NativeTabs.Trigger.Label>Toolbox</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="wrench.and.screwdriver.fill" md="handyman" />
       </NativeTabs.Trigger>
 
       {/* No Profile tab: it pushes at the root stack from the AppHeader's
