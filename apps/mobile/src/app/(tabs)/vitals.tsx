@@ -4,39 +4,54 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { FastingTile } from '@/components/toolbox/fasting-tile';
+import { WaterTile } from '@/components/toolbox/water-tile';
 import { StatTile, TileGrid } from '@/components/ui/stat-tile';
 import { WeightTile } from '@/components/vitals/weight-tile';
 import { useConsumed } from '@/store/diary';
+import { useFasting } from '@/store/fasting';
 import { useProfile } from '@/store/profile';
+import { useWater } from '@/store/water';
 import { useWeight } from '@/store/weight';
 import { BottomTabInset, Spacing } from '@/theme';
 
 /**
  * Vitals — the at-a-glance grid.
  *
- * Only tiles with a real data source are here: weight (this feature) and the
- * two nutrition tiles derived from today's diary. Steps, sleep and heart rate
- * need Apple Health / Health Connect, and water and fasting need their own log
- * paths; none of those exist yet, and rendering them with sample numbers would
- * break the same promise the groups UI makes — a value shown is a value the
- * app can stand behind. They land here as their sources do.
+ * Only tiles with a real data source are here: weight, the two nutrition tiles
+ * derived from today's diary, and water and fasting now that each has a log
+ * path of its own. Steps, sleep and heart rate need Apple Health / Health
+ * Connect and do not exist yet; rendering them with sample numbers would break
+ * the same promise the groups UI makes — a value shown is a value the app can
+ * stand behind. They land here as their sources do.
+ *
+ * Water and fasting are the worked examples of the Vitals/Toolbox line (see
+ * CLAUDE.md): the Toolbox owns each tool and its log screen, and a tracker
+ * earns a tile here once it produces a daily figure against a target. A
+ * calculator never does — there is no number of yours to show until you open it.
  */
 export default function VitalsScreen() {
   const refresh = useWeight((s) => s.refresh);
+  const refreshWater = useWater((s) => s.refresh);
+  const refreshFasting = useFasting((s) => s.refresh);
   const summary = useWeight((s) => s.summary);
   const consumed = useConsumed();
   const profile = useProfile((s) => s.profile);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshWater();
+    void refreshFasting();
+  }, [refresh, refreshWater, refreshFasting]);
 
-  // Weight can be logged from the detail screen or the sheet; re-read on
-  // return so the tile never shows a value the user just replaced.
+  // Each can be logged from a detail screen or the add sheet; re-read on
+  // return so a tile never shows a value the user just replaced.
   useFocusEffect(
     useCallback(() => {
       void refresh();
-    }, [refresh]),
+      void refreshWater();
+      void refreshFasting();
+    }, [refresh, refreshWater, refreshFasting]),
   );
 
   const targetCalories = profile?.targetCalories ?? null;
@@ -69,6 +84,10 @@ export default function VitalsScreen() {
 
         <TileGrid>
           <WeightTile />
+
+          <WaterTile />
+
+          <FastingTile />
 
           <StatTile
             icon={{ ios: 'circle.hexagongrid.fill', android: 'egg' }}
