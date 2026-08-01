@@ -10,21 +10,22 @@ A Health & Fitness app for **iOS and Android** — a "swiss-knife for fitness" w
 - **Profile & goals** — create a profile and set fitness goals (gain muscle, lose weight, maintain), with BMR/TDEE-based calorie and macro targets.
 - **Food logging** — record calorie intake plus macros and micronutrients.
 - **Barcode scanning** — scan a product to pull its nutrition details.
-- **Recipes** — recipe suggestions that fit your goals and targets.
+- **Toolbox** — the small tools around the core: BMI/BMR/TDEE figures, a unit converter, and secondary trackers like water and fasting.
 - **Health dashboard** — an at-a-glance view of the day's calories, macros, weight, and activity.
 - **Activity import** — steps and activity synced from other fitness apps (Apple Health / Health Connect).
 - **Light & dark mode** — full theming support.
 
 ### Built so far
-- Four-tab navigation (Log, Dashboard, Recipes, Profile) with a shared top header (plan icon · date · profile button).
+- Four-tab navigation (Log, Vitals, Groups, Toolbox) around a raised "+" in the reserved middle slot, with a shared top header (plan icon · date · profile button). Profile is not a tab — it pushes from that header.
 - Light/dark theming with the "Kinetic" design system (Space Grotesk / Instrument Sans).
-- Goal-based onboarding (BMR/TDEE plans), food search against the repo's own catalog API (`apps/api`), and an MMKV-persisted food diary; the remaining tabs are placeholders.
+- Goal-based onboarding (BMR/TDEE plans), food search against the repo's own catalog API (`apps/api`), and an MMKV-persisted food diary.
+- **Toolbox** — a body & energy calculator (BMI, BMR, TDEE, healthy weight range), a unit converter (kg/lb/st, cm/ft-in, kJ/kcal, g/oz, ml/fl oz), **water intake** logging with a bodyweight-derived goal, and an **intermittent-fasting timer**. Both trackers are offline-first: they log without a connection and sync when one returns.
 - **Barcode scanning** with GTIN normalisation, so the same product scans identically as UPC-A or EAN-13; a store's own weight/price label is explained rather than reported as "not found".
 - **Regional food database** (NZ/AU/US/GB) — your region is prioritised in search, never used to hide food.
 - **User-created foods with a review queue** — anyone can add a food, and a shared one is searchable for everyone immediately, then reviewed afterwards by an internal admin tool. Entry warns about likely mistakes as you type (notably a kilojoule figure entered into a kcal field, which AU/NZ nutrition panels invite), and an unreviewed food is labelled as such rather than left ambiguous.
 
 ### Roadmap / ideas
-Water intake · weight & body-measurement trends with charts · TDEE/BMR calculators with adaptive goals · intermittent-fasting timer · workout/exercise logging with calories burned · saved meals, favorites & meal planning · streaks and reminder notifications · micronutrient targets & insights · progress photos · home-screen widgets · Apple Watch / Wear OS companion · CSV data export · goal-based onboarding · subscription tiers (free / pro / pro max).
+Body-measurement trends with charts · adaptive goals that follow your TDEE (the calculators themselves ship in the Toolbox) · workout/exercise logging with calories burned · saved meals, favorites & meal planning · streaks and reminder notifications · micronutrient targets & insights · progress photos · home-screen widgets · Apple Watch / Wear OS companion · CSV data export · goal-based onboarding · subscription tiers (free / pro / pro max).
 
 ## Tech stack
 
@@ -77,7 +78,7 @@ There is no `pnpm web` target. Native projects (`ios/`, `android/`) are generate
 apps/
   mobile/           the Expo app
     src/
-      app/          file-based routes (expo-router): (onboarding), (tabs) — index (Log), dashboard, recipes, profile — add-food, food-detail
+      app/          file-based routes (expo-router): (onboarding), (tabs) — index (Log), vitals, groups, toolbox — add-food, food-detail, profile/, weight/
       components/   shared UI (app-header, app-tabs, log/, dashboard/, onboarding/, ui/)
       hooks/        use-food-search, use-food-detail, use-color-scheme
       lib/          runtime helpers: api (catalog client), food (display/portion math), health (BMR/TDEE math), auth
