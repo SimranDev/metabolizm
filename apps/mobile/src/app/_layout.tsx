@@ -193,6 +193,14 @@ export default function RootLayout() {
             {/* Weight drill-downs, same reasoning as the groups ones. */}
             <Stack.Screen name="weight/index" />
             <Stack.Screen name="weight/history" />
+            {/* Toolbox tools. Pushes from the Toolbox tab, so they carry their
+                own ScreenHeader like every other root-stack drill-down. Both
+                are pure calculators over `lib/health` — they read the profile
+                and weight caches and write nothing. */}
+            <Stack.Screen name="body-energy" />
+            <Stack.Screen name="converter" />
+            <Stack.Screen name="water/index" />
+            <Stack.Screen name="fasting/index" />
           </Stack.Protected>
           <Stack.Protected guard={!onboardingComplete}>
             <Stack.Screen name="(onboarding)" />

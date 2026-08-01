@@ -6,8 +6,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconButton } from '@/components/ui/icon-button';
 import { formatDayOfMonth, formatLongDate, formatMonthShort } from '@/lib/dates';
+import { formatVolume } from '@/lib/water';
 import { formatWeight } from '@/lib/weight';
 import { useDiary } from '@/store/diary';
+import { useTodayWater } from '@/store/water';
 import { useWeight } from '@/store/weight';
 import { Radius, Spacing, useTheme } from '@/theme';
 
@@ -66,8 +68,9 @@ const DEFAULT_MEAL = 'breakfast';
  * everything else is a different kind of entry: a tap grid for the capture
  * methods, then a list for the standalone logs.
  *
- * Nothing here is wired up yet — every option is inert pending the discussion
- * of what each one should do.
+ * Search, Water and Weight have destinations. The rest are inert pending the
+ * discussion of what each one should do, and say so in their trailing hint
+ * rather than showing a plausible number.
  */
 export default function AddEntryScreen() {
   const router = useRouter();
@@ -141,13 +144,7 @@ export default function AddEntryScreen() {
             icon={{ ios: 'arrow.up.right', android: 'arrow_outward' }}
             first
           />
-          <EntryRow
-            label="Water"
-            icon={{ ios: 'drop', android: 'water_drop' }}
-            // No trailing figure: there is no water log yet, and a sample
-            // "1.4 / 3.0 L" would read as something the user recorded.
-            hint="Not tracked yet"
-          />
+          <WaterRow />
           <WeightRow />
           <EntryRow
             label="Best set"
@@ -220,16 +217,19 @@ function CaptureCell({
  * A standalone log in the lower list. `hint` is the trailing value, and is
  * only ever a real one — a row with no data source says so rather than
  * showing a plausible number, the same promise the Vitals grid makes.
+ * `onPress` is omitted for the ones still awaiting a destination.
  */
 function EntryRow({
   label,
   hint,
   icon,
+  onPress,
   first,
 }: {
   label: string;
   hint?: string;
   icon: Icon;
+  onPress?: () => void;
   first?: boolean;
 }) {
   const { colors } = useTheme();
@@ -240,7 +240,7 @@ function EntryRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={[label, hint].filter(Boolean).join(', ')}
-        onPress={() => {}}
+        onPress={onPress}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
         <SymbolView name={icon} size={20} tintColor={colors.textSecondary} fallback={<View />} />
         <ThemedText type="h3" style={styles.rowLabel}>
@@ -262,7 +262,35 @@ function EntryRow({
   );
 }
 
-/** The one row with a real trailing value, read from the MMKV-cached summary. */
+/**
+ * Today's hydration, from the MMKV cache.
+ *
+ * `replace`, not `push`, for the same reason the Search cell above uses it: the
+ * sheet must not stay in the stack under the screen it opened.
+ *
+ * `useTodayWater` returning null means the cache describes another day, which
+ * reads as "not logged yet" rather than "0 ml" — the day hasn't been loaded,
+ * which is not the same as the user having drunk nothing.
+ */
+function WaterRow() {
+  const router = useRouter();
+  const today = useTodayWater();
+
+  return (
+    <EntryRow
+      label="Water"
+      icon={{ ios: 'drop', android: 'water_drop' }}
+      hint={
+        today === null
+          ? 'Not logged yet'
+          : `${formatVolume(today.totalMl)} of ${formatVolume(today.goalMl)}`
+      }
+      onPress={() => router.replace('/water')}
+    />
+  );
+}
+
+/** The weigh-in row, also read from the MMKV-cached summary. */
 function WeightRow() {
   const currentKg = useWeight((s) => s.summary?.stats.currentKg ?? null);
   const unit = useWeight((s) => s.unit);
