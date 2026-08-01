@@ -17,3 +17,7 @@ export * from "./user";
 export * from "./user-schemas";
 export * from "./weight";
 export * from "./weight-schemas";
+export * from "./water";
+export * from "./water-schemas";
+export * from "./fasting";
+export * from "./fasting-schemas";

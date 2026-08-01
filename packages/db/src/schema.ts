@@ -984,6 +984,135 @@ export const userWeightGoals = pgTable(
   ],
 );
 
+// Append-only hydration log — one row per drink, not one per day, so the
+// detail screen can show and undo individual servings. Same shape as
+// weight_entries, and deliberately NOT cached onto daily_summaries: that row
+// has exactly two writers with disjoint SET maps and a third is a new way for
+// them to clobber each other. Hydration is also absent from every group
+// share_config, so nothing outside the owner ever reads it.
+export const waterEntries = pgTable(
+  "water_entries",
+  {
+    // Client-generated UUIDv7, so a retried offline log is an idempotent
+    // upsert rather than a second glass of water.
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Client-local calendar day, never derived server-side from logged_at.
+    entryDate: date("entry_date", { mode: "string" }).notNull(),
+    // Always millilitres. Same rule as weight-is-always-kg: fl oz is a display
+    // preference converted once at render, never a stored unit.
+    volumeMl: integer("volume_ml").notNull(),
+    loggedAt: timestamp("logged_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Plain text rather than an enum, so an importer needs no migration.
+    source: text("source").notNull().default("manual"),
+    version: bigint("version", { mode: "number" }).notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    // Day totals and the 7-day strip.
+    index("water_entries_user_date_idx")
+      .on(t.userId, t.entryDate, t.loggedAt)
+      .where(sql`deleted_at IS NULL`),
+    // Keyset delta pulls: (updated_at, id) > cursor scoped to the user.
+    index("water_entries_user_updated_idx").on(t.userId, t.updatedAt, t.id),
+    // Bare column name on purpose — see the note on weight_entries.
+    check("water_entries_volume_ml_check", sql`volume_ml > 0 AND volume_ml <= 5000`),
+  ],
+);
+
+// One row per user, upserted — deliberately NOT the append-only effective_from
+// shape user_weight_goals uses. A weight goal is versioned because a past day
+// is scored against the goal in force *that* day; nothing scores a past
+// hydration day, so history here would be a table nobody ever reads back.
+// No row means "fall back to the derived default" (see defaultWaterGoalMl in
+// @metabolizm/shared), which is not the same as a goal of zero.
+export const waterGoals = pgTable(
+  "water_goals",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dailyGoalMl: integer("daily_goal_ml").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  () => [
+    check(
+      "water_goals_daily_goal_ml_check",
+      sql`daily_goal_ml >= 500 AND daily_goal_ml <= 10000`,
+    ),
+  ],
+);
+
+// A fast is an INTERVAL, not a per-day log, which is what makes it shaped
+// unlike every other tracker here: there is no entry_date, because a 16:8 fast
+// routinely spans midnight and filing it under one calendar day would have to
+// pick a wrong one. Elapsed is always derived from started_at, never stored —
+// a running total would need a writer on every tick.
+//
+// Like water, deliberately nothing to do with daily_summaries.
+export const fastingSessions = pgTable(
+  "fasting_sessions",
+  {
+    // Client-generated UUIDv7 — starting a fast offline and syncing later is
+    // an idempotent upsert rather than a second overlapping fast.
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    // NULL means in progress. The partial unique index below is what keeps
+    // "in progress" singular.
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    targetHours: integer("target_hours").notNull(),
+    // Plain text, not an enum: adding 20:4 or a new protocol must not need a
+    // migration. Same reasoning as weight_entries.source.
+    protocol: text("protocol").notNull().default("custom"),
+    note: text("note"),
+    version: bigint("version", { mode: "number" }).notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    // History, newest first.
+    index("fasting_sessions_user_started_idx")
+      .on(t.userId, t.startedAt)
+      .where(sql`deleted_at IS NULL`),
+    // At most one open fast per user. Without this a double-tap on Start
+    // leaves two overlapping fasts and every later elapsed reading is
+    // ambiguous — with no way to tell which one the user meant.
+    uniqueIndex("fasting_sessions_user_open_uq")
+      .on(t.userId)
+      .where(sql`ended_at IS NULL AND deleted_at IS NULL`),
+    // Bare column names on purpose — see the note on weight_entries.
+    check(
+      "fasting_sessions_target_hours_check",
+      sql`target_hours >= 1 AND target_hours <= 72`,
+    ),
+    // A fast that ended before it began is a clock bug, not a short fast.
+    check(
+      "fasting_sessions_ended_after_started_check",
+      sql`ended_at IS NULL OR ended_at > started_at`,
+    ),
+  ],
+);
+
 // Comments/reactions on a member's day card. subject_date is the subject's
 // local calendar day (matches daily_summaries.entry_date).
 export const groupInteractions = pgTable(
