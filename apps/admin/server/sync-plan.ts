@@ -41,6 +41,7 @@ import {
   accounts,
   dailySummaries,
   diaryEntries,
+  fastingSessions,
   foodPortions,
   foodReports,
   foodReviews,
@@ -54,6 +55,8 @@ import {
   userTargets,
   userWeightGoals,
   users,
+  waterEntries,
+  waterGoals,
   weightEntries,
 } from "@metabolizm/db";
 import { and, eq, getTableColumns, inArray, isNull, or, sql } from "drizzle-orm";
@@ -523,6 +526,39 @@ const SPECS: Spec[] = [
       `${userLabel(names, row.userId)} · from ${str(row.effectiveFrom)} → ${str(row.targetWeightKg)} kg`,
     prunable: true,
     scopeWhere: (ctx) => inArray(userWeightGoals.userId, ctx.primaryIds),
+    userRefs: (row) => [row.userId as string | null],
+  },
+  {
+    key: "water_entries",
+    table: waterEntries,
+    pkProps: ["id"],
+    label: (row, names) =>
+      `${userLabel(names, row.userId)} · ${str(row.entryDate)} · ${str(row.volumeMl)} ml`,
+    prunable: true,
+    scopeWhere: (ctx) => inArray(waterEntries.userId, ctx.primaryIds),
+    userRefs: (row) => [row.userId as string | null],
+  },
+  {
+    // Keyed on user_id, not a surrogate id — one goal row per user, upserted.
+    key: "water_goals",
+    table: waterGoals,
+    pkProps: ["userId"],
+    label: (row, names) =>
+      `${userLabel(names, row.userId)} · ${str(row.dailyGoalMl)} ml/day`,
+    prunable: true,
+    scopeWhere: (ctx) => inArray(waterGoals.userId, ctx.primaryIds),
+    userRefs: (row) => [row.userId as string | null],
+  },
+  {
+    key: "fasting_sessions",
+    table: fastingSessions,
+    pkProps: ["id"],
+    label: (row, names) =>
+      `${userLabel(names, row.userId)} · ${str(row.startedAt)} · ${str(row.targetHours)}h${
+        row.endedAt === null ? " (running)" : ""
+      }`,
+    prunable: true,
+    scopeWhere: (ctx) => inArray(fastingSessions.userId, ctx.primaryIds),
     userRefs: (row) => [row.userId as string | null],
   },
   {

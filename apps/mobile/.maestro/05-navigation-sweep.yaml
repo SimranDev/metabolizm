@@ -20,6 +20,9 @@ tags:
 - assertVisible: "WEIGHT"
 - assertVisible: "PROTEIN"
 - assertVisible: "ENERGY"
+# A tracker earns a Vitals tile once it has a daily figure against a target.
+- assertVisible: "Water"
+- assertVisible: "Fasting"
 # Only tiles with a real data source ship; the rest says so honestly.
 - assertVisible: "Steps, sleep and heart rate arrive with Apple Health and Health Connect."
 
@@ -28,11 +31,37 @@ tags:
 # group, in which case "Train together, privately" is correctly absent.
 - assertVisible: "Create a group"
 
-- tapOn: "Recipes"
-- assertVisible: "Coming soon"
+- tapOn: "Toolbox"
+- assertVisible: "Water"
+- assertVisible: "Fasting"
+- assertVisible: "CALCULATORS"
+- assertVisible: "Body & energy"
+- assertVisible: "Unit converter"
+# Same honesty rule as the Vitals footnote above.
+- assertVisible: "Workout logging and body measurements land here as their log paths do."
 
-- tapOn: "Profile"
-- assertVisible: "Coming soon"
+# ── the Toolbox tools open and come back ──────────────────────────────────
+- tapOn: "Unit converter"
+- assertVisible: "Kilograms"
+- tapOn: "Go back"
+- assertVisible: "CALCULATORS"
+
+- tapOn: "Body & energy"
+# Derived from lib/health, so this renders for any completed profile.
+- assertVisible: "Activity"
+- tapOn: "Go back"
+
+# The fasting tile is a door; with nothing running it invites rather than
+# showing a zero.
+- tapOn: "Fasting"
+- assertVisible: "Not fasting"
+- tapOn: "Go back"
+- assertVisible: "CALCULATORS"
+
+# Profile is not a tab — it pushes at the root stack from the AppHeader button.
+- tapOn: "Profile settings"
+- assertVisible: "ACCOUNT"
+- tapOn: "Go back"
 
 # ── modals dismiss cleanly ────────────────────────────────────────────────
 - tapOn: "Log"

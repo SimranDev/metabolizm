@@ -7,12 +7,14 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { validateEnv } from "./config/env";
 import { DbModule } from "./db/db.module";
 import { DiaryModule } from "./diary/diary.module";
+import { FastingModule } from "./fasting/fasting.module";
 import { GroupsModule } from "./groups/groups.module";
 import { HealthModule } from "./health/health.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { SummariesModule } from "./summaries/summaries.module";
 import { SyncModule } from "./sync/sync.module";
 import { UsersModule } from "./users/users.module";
+import { WaterModule } from "./water/water.module";
 import { WeightModule } from "./weight/weight.module";
 
 @Module({
@@ -26,6 +28,8 @@ import { WeightModule } from "./weight/weight.module";
     DiaryModule,
     SummariesModule,
     WeightModule,
+    WaterModule,
+    FastingModule,
     GroupsModule,
     NotificationsModule,
     SyncModule,
