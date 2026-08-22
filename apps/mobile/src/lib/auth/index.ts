@@ -241,7 +241,7 @@ export async function signOut(): Promise<void> {
 
 /** The session cookie for authenticated API requests, or null. */
 export async function getToken(): Promise<string | null> {
-  return authClient.getCookie() || null;
+  return (await authClient.getCookie()) || null;
 }
 
 // Resolved once per launch: the id doesn't change within a session, and group

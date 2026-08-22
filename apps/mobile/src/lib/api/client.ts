@@ -36,7 +36,7 @@ async function send(path: string, opts: RequestOptions): Promise<Response> {
   // plugin); empty when signed out — anonymous callers see the system
   // catalog only. `credentials: "omit"` so the manual header is the only
   // cookie source.
-  const cookie = authClient.getCookie();
+  const cookie = await authClient.getCookie();
   const hasBody = opts.body !== undefined;
 
   return fetch(`${BASE_URL}/v1${path}`, {
