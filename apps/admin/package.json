@@ -13,26 +13,26 @@
     "@metabolizm/db": "workspace:*",
     "@metabolizm/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "fastify": "^5.2.0",
+    "fastify": "^5.12.1",
     "postgres": "^3.4.9",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "uuidv7": "^1.2.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.13.3",
-    "@types/react": "~19.2.2",
-    "@types/react-dom": "~19.2.1",
-    "@vitejs/plugin-react": "^5.0.0",
-    "concurrently": "^9.1.0",
+    "@types/react": "~19.2.18",
+    "@types/react-dom": "~19.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.4",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
-    "globals": "^17.7.0",
-    "tsx": "^4.19.0",
+    "globals": "^17.11.0",
+    "tsx": "^4.23.12",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.64.0",
-    "vite": "^7.0.0"
+    "typescript-eslint": "^8.67.0",
+    "vite": "^7.3.6"
   }
 }

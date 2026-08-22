@@ -22,6 +22,6 @@
     "typecheck": "pnpm --filter @metabolizm/shared build && pnpm --filter @metabolizm/db build && pnpm -r typecheck"
   },
   "devDependencies": {
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
